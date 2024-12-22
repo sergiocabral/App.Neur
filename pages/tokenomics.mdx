@@ -1,0 +1,197 @@
+# Tokenomics
+
+## Overview
+
+**$NEUR** is the native utility token of the Neur platform, designed to create a sustainable ecosystem that rewards users and aligns incentives across the platform.
+
+<div style={{
+  display: 'flex',
+  alignItems: 'center',
+  gap: '1rem',
+  padding: '0.75rem 1rem',
+  margin: '1rem 0',
+  backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  borderRadius: '0.75rem',
+  fontSize: '0.875rem',
+}}>
+  <span style={{ color: 'var(--fg-light)' }}>Contract Address:</span>
+  <code 
+    style={{ 
+      color: 'var(--fg)',
+      fontFamily: 'monospace',
+      cursor: 'pointer',
+      transition: 'opacity 0.2s ease',
+    }}
+    onClick={() => {
+      navigator.clipboard.writeText('0x0000000000000000000000000000000000000000');
+    }}
+    onMouseEnter={(e) => {
+      e.target.style.opacity = '0.7';
+      e.target.title = 'Click to copy';
+    }}
+    onMouseLeave={(e) => {
+      e.target.style.opacity = '1';
+    }}
+  >.............................................pump</code>
+  <span style={{ 
+    marginLeft: 'auto',
+    color: 'var(--fg-light)',
+    fontSize: '0.75rem' 
+  }}>Solana Network</span>
+</div>
+
+## Distribution
+
+<div style={{
+  maxWidth: '800px',
+  margin: '2rem auto',
+  padding: '2rem',
+  backgroundColor: 'var(--background)',
+  borderRadius: '1.5rem',
+}}>
+  <div style={{
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2.5rem',
+  }}>
+    <div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        marginBottom: '0.75rem'
+      }}>
+        <div style={{
+          flex: '1',
+          height: '3.5rem',
+          backgroundColor: '#60A5FA',
+          borderRadius: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          paddingLeft: '1.5rem',
+          color: 'white',
+          fontSize: '1.25rem',
+          fontWeight: '600'
+        }}>
+          90%
+        </div>
+        <div style={{ 
+          fontSize: '1.125rem',
+          color: 'var(--fg)',
+          fontWeight: '500',
+          minWidth: '160px' 
+        }}>
+          Circulating Supply
+        </div>
+      </div>
+      <div style={{ 
+        fontSize: '0.9375rem', 
+        color: 'var(--fg-light)',
+        paddingLeft: '0.5rem' 
+      }}>
+        Community ownership and fair distribution
+      </div>
+    </div>
+
+    <div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        marginBottom: '0.75rem'
+      }}>
+        <div style={{
+          width: '4rem',
+          height: '3.5rem',
+          backgroundColor: '#34D399',
+          borderRadius: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '1.25rem',
+          fontWeight: '600'
+        }}>
+          5%
+        </div>
+        <div style={{ 
+          fontSize: '1.125rem',
+          color: 'var(--fg)',
+          fontWeight: '500'
+        }}>
+          Prize Pool & Treasury
+        </div>
+      </div>
+      <div style={{ 
+        fontSize: '0.9375rem', 
+        color: 'var(--fg-light)',
+        paddingLeft: '0.5rem' 
+      }}>
+        Ecosystem rewards and development
+      </div>
+    </div>
+
+    <div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '1rem',
+        marginBottom: '0.75rem'
+      }}>
+        <div style={{
+          width: '4rem',
+          height: '3.5rem',
+          backgroundColor: '#A78BFA',
+          borderRadius: '1rem',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontSize: '1.25rem',
+          fontWeight: '600'
+        }}>
+          5%
+        </div>
+        <div style={{ 
+          fontSize: '1.125rem',
+          color: 'var(--fg)',
+          fontWeight: '500'
+        }}>
+          Team
+        </div>
+      </div>
+      <div style={{ 
+        fontSize: '0.9375rem', 
+        color: 'var(--fg-light)',
+        paddingLeft: '0.5rem' 
+      }}>
+        1-year linear vesting
+      </div>
+    </div>
+  </div>
+</div>
+
+### Circulating Supply (90%)
+The majority of tokens are fairly launched and available to the community from day one, ensuring wide distribution and decentralized ownership. This approach promotes a fair and inclusive ecosystem where everyone has the opportunity to participate.
+
+### Prize Pool & Treasury (5%)
+This allocation is reserved for:
+- Rewarding early participants who joined EAP
+- Rewarding active participants in the Neur ecosystem
+- Incentivizing community contributions
+- Supporting ecosystem growth initiatives
+- Funding future development and improvements
+
+### Team (5%)
+Allocated for the core team developing the Neur framework, ecosystem, and community. To ensure long-term alignment and prevent market disruption:
+- Team allocations are locked in escrow
+- Tokens vest linearly over a 1-year period
+- Smart contract-enforced vesting schedule
+
+## Vesting Schedule
+
+To maintain price stability and ensure long-term commitment:
+- Team tokens are subject to a 12-month linear vesting schedule
+- Treasury funds are released gradually based on community governance decisions
+- All vesting and lock-up mechanisms are enforced through smart contracts
+
