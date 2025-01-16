@@ -40,6 +40,16 @@ export async function processAction(action: ActionWithUser) {
     const systemPrompt =
       defaultSystemPrompt + `\n\nUser Solana wallet public key: ${publicKey}`;
 
+    if (
+      action.user.wallets.length === 0 ||
+      !action.user.wallets[0].encryptedPrivateKey
+    ) {
+      console.error(
+        `[action:${action.id}] Unable to find valid wallet for ${action.user.id}`,
+      );
+      return;
+    }
+
     // WARNING: This attaches the user's private key to the agent kit
 
     // Clone tools and attach user agent kit

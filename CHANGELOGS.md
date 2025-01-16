@@ -1,5 +1,10 @@
 # Changelogs
 
+## v0.1.15
+
+- Added more columns to wallet, uses composite ownerId + public key for unique index
+- Added `lastFailureAt` and `lastSuccessAt` columns to action
+
 ## v0.1.14
 
 - Removed images from Jina scraping results to reduce context bloat
