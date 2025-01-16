@@ -62,16 +62,17 @@ export const retrieveAgentKit = actionClient.action(async () => {
   const wallet = await prisma.wallet.findFirst({
     where: {
       ownerId: userId,
+      walletSource: 'CUSTOM',
     },
   });
 
-  if (!wallet) {
+  if (!wallet || !wallet.encryptedPrivateKey) {
     return { success: false, error: 'WALLET_NOT_FOUND' };
   }
 
   console.log('[retrieveAgentKit] wallet', wallet.publicKey);
 
-  const privateKey = await decryptPrivateKey(wallet?.encryptedPrivateKey);
+  const privateKey = await decryptPrivateKey(wallet.encryptedPrivateKey);
   const openaiKey = process.env.OPENAI_API_KEY!;
   const agent = new SolanaAgentKit(privateKey, RPC_URL, openaiKey);
 

@@ -33,7 +33,7 @@ export const listEmbeddedWallets = actionClient.action<
   }
 
   const wallets = await prisma.wallet.findMany({
-    where: { ownerId: userId },
+    where: { ownerId: userId, walletSource: 'CUSTOM' },
   });
 
   return {
@@ -63,10 +63,10 @@ export const embeddedWalletSendSOL = actionClient
       }
 
       const wallet = await prisma.wallet.findUnique({
-        where: { id: walletId },
+        where: { id: walletId, walletSource: 'CUSTOM' },
       });
 
-      if (!wallet || wallet.ownerId !== userId) {
+      if (!wallet || wallet.ownerId !== userId || !wallet.encryptedPrivateKey) {
         return {
           success: false,
           error: 'Wallet not found',
