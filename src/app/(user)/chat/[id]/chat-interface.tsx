@@ -40,7 +40,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import usePolling from '@/hooks/use-polling';
-import { useStreamingState } from '@/hooks/use-streaming-state';
+import { StreamingState, useStreamingState } from '@/hooks/use-streaming-state';
 import { useUser } from '@/hooks/use-user';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import { EVENTS } from '@/lib/events';
@@ -95,6 +95,7 @@ interface ChatMessageProps {
   onPreviewImage: (preview: ImagePreview) => void;
   addToolResult: (result: ToolResult) => void;
   append: (message: Message) => void;
+  statesById: Record<string, StreamingState>;
 }
 
 interface AttachmentPreviewProps {
@@ -257,21 +258,27 @@ function MessageToolInvocations({
   toolInvocations,
   addToolResult,
   append,
+  hasContent,
+  statesById,
 }: {
   messageId: string;
   toolInvocations: ToolInvocation[];
   addToolResult: (result: ToolResult) => void;
   append: (message: Message) => void;
+  hasContent: boolean;
+  statesById: Record<string, StreamingState>;
 }) {
   return (
-    <div className="space-y-px">
+    <div className="w-full space-y-px">
       {toolInvocations.map(
-        ({ toolCallId, toolName, displayName, result, state, args }) => {
+        ({ toolCallId, toolName, displayName, result, state, args }, index) => {
           if (toolName in TOOL_COMPONENTS) {
             return renderToolInvocation(
               { toolCallId, toolName, displayName, result, state, args },
+              statesById[toolCallId],
               messageId,
               append,
+              hasContent || index > 0,
             );
           }
           const toolResult = result as ToolActionResult;
@@ -355,6 +362,7 @@ function ChatMessage({
   onPreviewImage,
   addToolResult,
   append,
+  statesById,
 }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const hasAttachments =
@@ -415,7 +423,12 @@ function ChatMessage({
         <div className="w-8" aria-hidden="true" />
       ) : null}
 
-      <div className="group relative flex max-w-[85%] flex-row items-center">
+      <div
+        className={cn(
+          'group relative flex max-w-[85%] flex-row items-center',
+          isUser ? '' : 'w-full',
+        )}
+      >
         {isUser && (
           <button
             onClick={handleSavePrompt}
@@ -425,7 +438,10 @@ function ChatMessage({
           </button>
         )}
         <div
-          className={cn('relative gap-2', isUser ? 'items-end' : 'items-start')}
+          className={cn(
+            'relative w-full gap-2',
+            isUser ? 'items-end' : 'items-start',
+          )}
         >
           {hasAttachments && (
             <div
@@ -442,7 +458,7 @@ function ChatMessage({
           {message.content && (
             <div
               className={cn(
-                'relative flex flex-col gap-2 rounded-2xl px-4 py-3 text-sm shadow-sm',
+                'relative flex w-full flex-col gap-2 rounded-2xl px-4 py-3 text-sm shadow-sm',
                 isUser ? 'bg-primary' : 'bg-muted/60',
               )}
             >
@@ -519,6 +535,8 @@ function ChatMessage({
               toolInvocations={message.toolInvocations}
               addToolResult={addToolResult}
               append={append}
+              hasContent={!!message.content}
+              statesById={statesById}
             />
           )}
         </div>
@@ -901,6 +919,7 @@ export default function ChatInterface({
                   onPreviewImage={setPreviewImage}
                   addToolResult={addToolResult}
                   append={append}
+                  statesById={statesById}
                 />
               );
             })}
@@ -1028,15 +1047,15 @@ export default function ChatInterface({
 
 const renderToolInvocation = (
   toolInvocation: ToolInvocation,
+  toolStreamState: StreamingState | undefined,
   messageId: string,
   append: (message: Message) => void,
+  includeTopMargin: boolean,
 ) => {
   if (!(toolInvocation.toolName in TOOL_COMPONENTS)) {
     return null;
   }
   const ToolComponent = TOOL_COMPONENTS[toolInvocation.toolName];
-
-  const streamingState = useStreamingState();
 
   const customAddResult = async (result: DataStreamDelta) => {
     append({
@@ -1052,7 +1071,6 @@ const renderToolInvocation = (
     });
   };
 
-  const toolStreamState = streamingState.statesById[toolInvocation.toolCallId];
   if (
     toolInvocation.state === 'result' &&
     toolStreamState?.toolCallId === toolInvocation.toolCallId &&
@@ -1082,10 +1100,17 @@ const renderToolInvocation = (
   const inProgress =
     toolInvocation.state !== 'result' ||
     toolStreamState?.status === 'streaming';
-
   return (
-    <div key={toolInvocation.toolCallId} className="group my-4">
-      <div className={inProgress ? 'mt-2' : 'mt-2 w-full'}>
+    <div
+      key={toolInvocation.toolCallId}
+      className={cn('group w-full', includeTopMargin ? 'my-4' : '')}
+    >
+      <div
+        className={cn(
+          includeTopMargin ? 'mt-2' : '',
+          inProgress ? '' : 'w-full',
+        )}
+      >
         <div
           className={
             inProgress ? '' : 'w-full rounded-lg bg-muted/40 px-3 py-2'
@@ -1109,7 +1134,7 @@ const renderToolInvocation = (
           </div>
         </div>
         <div className="mt-2 sm:px-4">
-          {inProgress && streamingState === undefined && (
+          {inProgress && toolStreamState === undefined && (
             <div className="mt-px px-3">
               <div className="h-20 animate-pulse rounded-lg bg-muted/40" />
             </div>
