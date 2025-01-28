@@ -14,6 +14,7 @@ import Image from 'next/image';
 import { SavedPrompt } from '@prisma/client';
 import { Attachment, JSONValue, Message } from 'ai';
 import { useChat } from 'ai/react';
+import { extend, get } from 'lodash';
 import {
   Bookmark,
   Image as ImageIcon,
@@ -32,21 +33,26 @@ import { getToolConfig } from '@/ai/providers';
 import { Confirmation } from '@/components/confimation';
 import { FloatingWallet } from '@/components/floating-wallet';
 import Logo from '@/components/logo';
+import { SwapCard } from '@/components/message/swap/swap-card';
 import { ToolResult } from '@/components/message/tool-result';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import usePolling from '@/hooks/use-polling';
+import { useStreamingState } from '@/hooks/use-streaming-state';
 import { useUser } from '@/hooks/use-user';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import { EVENTS } from '@/lib/events';
 import { uploadImage } from '@/lib/upload';
 import { cn } from '@/lib/utils';
+import { getMessageIdFromAnnotations } from '@/lib/utils/ai';
+import { generateUUID } from '@/lib/utils/format';
 import {
   createSavedPrompt,
   getSavedPrompts,
   setSavedPromptLastUsedAt,
 } from '@/server/actions/saved-prompt';
+import { DataStreamDelta } from '@/types/stream';
 import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { SavedPromptsMenu } from './components/saved-prompts-menu';
@@ -82,6 +88,7 @@ interface ChatMessageProps {
   setSavedPrompts: React.Dispatch<SetStateAction<SavedPrompt[]>>;
   onPreviewImage: (preview: ImagePreview) => void;
   addToolResult: (result: ToolResult) => void;
+  append: (message: Message) => void;
 }
 
 interface AttachmentPreviewProps {
@@ -98,10 +105,7 @@ interface ToolInvocation {
   toolCallId: string;
   toolName: string;
   displayName?: string;
-  result?: {
-    result?: string;
-    message: string;
-  };
+  result?: any;
   state?: string;
   args?: any;
 }
@@ -242,17 +246,32 @@ function MessageAttachments({
   );
 }
 
+const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
+  swapTokens: SwapCard,
+};
+
 function MessageToolInvocations({
+  messageId,
   toolInvocations,
   addToolResult,
+  append,
 }: {
+  messageId: string;
   toolInvocations: ToolInvocation[];
   addToolResult: (result: ToolResult) => void;
+  append: (message: Message) => void;
 }) {
   return (
     <div className="space-y-px">
       {toolInvocations.map(
         ({ toolCallId, toolName, displayName, result, state, args }) => {
+          if (toolName in TOOL_COMPONENTS) {
+            return renderToolInvocation(
+              { toolCallId, toolName, displayName, result, state, args },
+              messageId,
+              append,
+            );
+          }
           const toolResult = result as ToolActionResult;
           if (toolName === 'askForConfirmation') {
             return (
@@ -333,6 +352,7 @@ function ChatMessage({
   setSavedPrompts,
   onPreviewImage,
   addToolResult,
+  append,
 }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const hasAttachments =
@@ -353,7 +373,7 @@ function ChatMessage({
       createSavedPrompt({
         title: message.content.trim().slice(0, 30),
         content: message.content.trim(),
-      }).then((res) => {
+      }).then((res: any) => {
         if (!res?.data?.data) {
           throw new Error();
         }
@@ -411,7 +431,7 @@ function ChatMessage({
             >
               <MessageAttachments
                 attachments={message.experimental_attachments!}
-                messageId={message.id}
+                messageId={getMessageIdFromAnnotations(message)}
                 onPreviewImage={onPreviewImage}
               />
             </div>
@@ -493,8 +513,10 @@ function ChatMessage({
 
           {message.toolInvocations && (
             <MessageToolInvocations
+              messageId={getMessageIdFromAnnotations(message)}
               toolInvocations={message.toolInvocations}
               addToolResult={addToolResult}
+              append={append}
             />
           )}
         </div>
@@ -695,9 +717,9 @@ export default function ChatInterface({
     handleInputChange,
     isLoading,
     addToolResult,
-    data,
     setInput,
     setMessages,
+    append,
   } = useChat({
     id,
     maxSteps: 10,
@@ -721,17 +743,13 @@ export default function ChatInterface({
       } as unknown as JSONValue;
     },
   });
+  const { statesById } = useStreamingState();
 
-  const messages = useMemo(() => {
-    const toolUpdates = data as unknown as ToolUpdate[];
-    if (!toolUpdates || toolUpdates.length === 0) {
-      return chatMessages;
-    }
+  const isStreaming = Object.values(statesById).find(
+    (s) => s.status === 'streaming',
+  );
 
-    const updatedMessages = applyToolUpdates(chatMessages, toolUpdates);
-
-    return updatedMessages;
-  }, [chatMessages, data]);
+  const messages = chatMessages;
 
   // Use polling for fetching new messages
   usePolling({
@@ -867,19 +885,27 @@ export default function ChatInterface({
       <div className="no-scrollbar relative flex-1 overflow-y-auto">
         <div className="mx-auto w-full max-w-3xl">
           <div className="space-y-4 px-4 pb-36 pt-4">
-            {messages.map((message, index) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                index={index}
-                messages={messages}
-                setSavedPrompts={setSavedPrompts}
-                onPreviewImage={setPreviewImage}
-                addToolResult={addToolResult}
-              />
-            ))}
+            {messages.map((message, index) => {
+              if (message.role === 'data') {
+                return null;
+              }
+              return (
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  index={index}
+                  messages={messages}
+                  setSavedPrompts={setSavedPrompts}
+                  onPreviewImage={setPreviewImage}
+                  addToolResult={addToolResult}
+                  append={append}
+                />
+              );
+            })}
             {isLoading &&
-              messages[messages.length - 1]?.role !== 'assistant' && (
+              !isStreaming &&
+              messages[messages.length - 1]?.role !== 'assistant' &&
+              messages[messages.length - 1]?.role !== 'data' && (
                 <LoadingMessage />
               )}
             <div ref={messagesEndRef} />
@@ -997,3 +1023,98 @@ export default function ChatInterface({
     </div>
   );
 }
+
+const renderToolInvocation = (
+  toolInvocation: ToolInvocation,
+  messageId: string,
+  append: (message: Message) => void,
+) => {
+  if (!(toolInvocation.toolName in TOOL_COMPONENTS)) {
+    return null;
+  }
+  const ToolComponent = TOOL_COMPONENTS[toolInvocation.toolName];
+
+  const streamingState = useStreamingState();
+
+  const customAddResult = async (result: DataStreamDelta) => {
+    append({
+      id: generateUUID(),
+      role: 'data',
+      content: '',
+      data: {
+        result: result as unknown as JSONValue,
+        toolCallId: toolInvocation.toolCallId,
+        toolName: toolInvocation.toolName,
+        messageId,
+      },
+    });
+  };
+
+  const toolStreamState = streamingState.statesById[toolInvocation.toolCallId];
+  if (
+    toolInvocation.state === 'result' &&
+    toolStreamState?.toolCallId === toolInvocation.toolCallId &&
+    (toolStreamState.status === 'streaming' ||
+      toolStreamState.status === 'idle')
+  ) {
+    toolInvocation.result = {
+      result: {
+        ...toolInvocation.result.result,
+        ...toolStreamState.result,
+      },
+    };
+  }
+
+  const data =
+    toolInvocation.state === 'result'
+      ? toolInvocation.result
+      : {
+          success: true,
+          result: toolStreamState?.result,
+        };
+
+  // if (data.result.step === "canceled") {
+  //   return null;
+  // }
+
+  const inProgress =
+    toolInvocation.state !== 'result' ||
+    toolStreamState?.status === 'streaming';
+
+  return (
+    <div key={toolInvocation.toolCallId} className="group my-4">
+      <div className={inProgress ? 'mt-2' : 'mt-2 w-full'}>
+        <div
+          className={
+            inProgress ? '' : 'w-full rounded-lg bg-muted/40 px-3 py-2'
+          }
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div
+              className={cn(
+                'h-1.5 w-1.5 rounded-full ring-2',
+                inProgress
+                  ? 'animate-pulse bg-amber-500 ring-amber-500/20'
+                  : 'bg-emerald-500 ring-emerald-500/20',
+              )}
+            />
+            <span className="truncate text-xs font-medium text-foreground/90">
+              {toolInvocation.toolName}
+            </span>
+            <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">
+              {toolInvocation.toolCallId.slice(0, 9)}
+            </span>
+          </div>
+        </div>
+        <div className="mt-2 sm:px-4">
+          {inProgress && streamingState === undefined && (
+            <div className="mt-px px-3">
+              <div className="h-20 animate-pulse rounded-lg bg-muted/40" />
+            </div>
+          )}
+          <ToolComponent data={data} addToolResult={customAddResult} />
+        </div>
+      </div>
+    </div>
+  );
+};

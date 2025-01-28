@@ -22,7 +22,7 @@ const usingAnthropic = !!process.env.ANTHROPIC_API_KEY;
 const anthropic = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const claude35Sonnet = anthropic('claude-3-5-sonnet-20241022');
 
-const openai = createOpenAI({
+export const openai = createOpenAI({
   baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
   apiKey: process.env.OPENAI_API_KEY,
   compatibility: 'strict',
@@ -104,6 +104,7 @@ Realtime knowledge:
 export const defaultModel = usingAnthropic ? claude35Sonnet : openAiModel;
 
 export interface ToolConfig {
+  deprecated?: boolean;
   displayName?: string;
   icon?: ReactNode;
   isCollapsible?: boolean;
@@ -223,6 +224,7 @@ Rules:
 
 Available Tools:
 ${Object.entries(defaultTools)
+  .filter(([deprecated]) => !deprecated)
   .map(([name, { description }]) => `- **${name}**: ${description}`)
   .join('\n')}
 `;

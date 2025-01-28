@@ -2,12 +2,16 @@ import { Message as PrismaMessage } from '@prisma/client';
 import {
   Attachment,
   CoreToolMessage,
+  DataStreamWriter,
+  JSONValue,
   LanguageModelUsage,
   Message,
   ToolInvocation,
 } from 'ai';
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
+
+import { DataStreamDelta } from '@/types/stream';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -218,4 +222,53 @@ export function logWithTiming(startTime: number, message: string) {
   const elapsedTime = (performance.now() - startTime).toFixed(1);
 
   console.log(`${message} (${elapsedTime}ms)`);
+}
+
+export function streamUpdate({
+  stream = undefined,
+  update,
+}: {
+  stream?: DataStreamWriter;
+  update: DataStreamDelta;
+}) {
+  stream?.writeData(update as unknown as JSONValue);
+}
+
+export function diffObjects<T extends Record<string, any>>(
+  original: T,
+  updated: T,
+): Partial<T> | undefined {
+  // If both are non-objects or one is not object => do direct compare
+  if (!isPlainObject(original) || !isPlainObject(updated)) {
+    // If they are strictly equal, no change; otherwise return updated
+    return original === updated ? undefined : updated;
+  }
+
+  const difference: Record<string, any> = {};
+
+  // Compare every key in `updated`
+  for (const key of Object.keys(updated)) {
+    const originalValue = original[key];
+    const updatedValue = updated[key];
+
+    // Recursively diff nested objects
+    const valueDiff = diffObjects(originalValue, updatedValue);
+
+    // If there is a difference, store it
+    if (valueDiff !== undefined) {
+      difference[key] = valueDiff;
+    }
+  }
+  return Object.keys(difference).length > 0
+    ? (difference as Partial<T>)
+    : undefined;
+}
+
+export function isPlainObject(obj: any): boolean {
+  return (
+    obj !== null &&
+    typeof obj === 'object' &&
+    !Array.isArray(obj) &&
+    Object.prototype.toString.call(obj) === '[object Object]'
+  );
 }

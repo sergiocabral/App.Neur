@@ -1,9 +1,13 @@
 import { revalidatePath } from 'next/cache';
 
 import {
+  CoreAssistantMessage,
   CoreTool,
+  CoreToolMessage,
+  DataStreamWriter,
   Message,
   NoSuchToolError,
+  Output,
   appendResponseMessages,
   createDataStreamResponse,
   generateObject,
@@ -11,6 +15,7 @@ import {
   streamText,
 } from 'ai';
 import { performance } from 'perf_hooks';
+import { aborted } from 'util';
 import { z } from 'zod';
 
 import {
@@ -18,14 +23,18 @@ import {
   defaultSystemPrompt,
   defaultTools,
   getToolsFromRequiredTools,
+  openai,
 } from '@/ai/providers';
+import { swapTokens } from '@/ai/tools/swap';
 import { MAX_TOKEN_MESSAGES } from '@/lib/constants';
 import { isValidTokenUsage, logWithTiming } from '@/lib/utils';
 import {
+  ResponseMessage,
   getConfirmationResult,
-  getUnconfirmedConfirmationMessage,
-  handleConfirmation,
+  getToolUpdateMessage,
+  handleToolUpdateMessage,
 } from '@/lib/utils/ai';
+import { generateUUID } from '@/lib/utils/format';
 import { generateTitleFromUserMessage } from '@/server/actions/ai';
 import { getToolsFromOrchestrator } from '@/server/actions/orchestrator';
 import { verifyUser } from '@/server/actions/user';
@@ -93,6 +102,7 @@ export async function POST(req: Request) {
         ? await dbCreateMessages({
             messages: [
               {
+                id: generateUUID(),
                 conversationId,
                 role: 'user',
                 content: message.content,
@@ -105,15 +115,20 @@ export async function POST(req: Request) {
           })
         : null;
 
-    // Check if there is an unconfirmed confirmation message that we need to handle
-    const unconfirmed = getUnconfirmedConfirmationMessage(existingMessages);
+    const toolUpdateMessage = getToolUpdateMessage(message, existingMessages);
 
-    // Handle the confirmation message if it exists
-    const { confirmationHandled, updates } = await handleConfirmation({
-      current: message,
-      unconfirmed,
-    });
-    logWithTiming(startTime, '[chat/route] handleConfirmation completed');
+    if (
+      toolUpdateMessage.toolCallId !== undefined &&
+      toolUpdateMessage.toolName !== undefined &&
+      toolUpdateMessage.messageIdToUpdate !== undefined &&
+      toolUpdateMessage.toolCallResults?.step !== 'completed' &&
+      message
+    ) {
+      if (message.role === 'assistant') {
+        return new Response('OK', { status: 200 });
+      }
+      return handleToolUpdateMessage(toolUpdateMessage, message);
+    }
 
     // Build the system prompt and append the history of attachments
     const attachments = existingMessages
@@ -153,6 +168,11 @@ export async function POST(req: Request) {
 
     logWithTiming(startTime, '[chat/route] calling createDataStreamResponse');
 
+    const abortData = {
+      aborted: false,
+      abortController: new AbortController(),
+    };
+
     // Begin the stream response
     return createDataStreamResponse({
       execute: async (dataStream) => {
@@ -165,17 +185,9 @@ export async function POST(req: Request) {
           });
         }
 
-        // Write any updates to the data stream (e.g. tool updates)
-        if (updates.length) {
-          updates.forEach((u) => dataStream.writeData(u));
-        }
-
         // Exclude the confirmation tool if we are handling a confirmation
         const { toolsRequired, usage: orchestratorUsage } =
-          await getToolsFromOrchestrator(
-            relevant,
-            degenMode || confirmationHandled,
-          );
+          await getToolsFromOrchestrator(relevant, degenMode || false);
 
         console.log('toolsRequired', toolsRequired);
 
@@ -189,11 +201,20 @@ export async function POST(req: Request) {
           ? getToolsFromRequiredTools(toolsRequired)
           : defaultTools;
 
+        const responses: ResponseMessage[] = [];
+
         // Begin streaming text from the model
         const result = streamText({
           model: defaultModel,
           system: systemPrompt,
-          tools: tools as Record<string, CoreTool<any, any>>,
+          tools: {
+            swapTokens: swapTokens({
+              dataStream,
+              abortData,
+              extraData: { walletAddress: publicKey, askForConfirmation: true },
+            }),
+          },
+          abortSignal: abortData?.abortController?.signal,
           experimental_toolCallStreaming: true,
           experimental_telemetry: {
             isEnabled: true,
@@ -229,6 +250,12 @@ export async function POST(req: Request) {
           experimental_transform: smoothStream(),
           maxSteps: 15,
           messages: relevant,
+          onStepFinish: async (step) => {
+            responses.push(...step.response.messages);
+            if (abortData.aborted && userId) {
+              await saveResponses(dataStream, responses, conversationId);
+            }
+          },
           async onFinish({ response, usage }) {
             if (!userId) return;
             try {
@@ -237,40 +264,11 @@ export async function POST(req: Request) {
                 '[chat/route] streamText.onFinish complete',
               );
 
-              const finalMessages = appendResponseMessages({
-                messages: [],
-                responseMessages: response.messages,
-              }).filter(
-                (m) =>
-                  // Accept either a non-empty message or a tool invocation
-                  m.content !== '' || (m.toolInvocations || []).length !== 0,
+              const saved = await saveResponses(
+                dataStream,
+                responses,
+                conversationId,
               );
-
-              // Increment createdAt by 1ms to avoid duplicate timestamps
-              const now = new Date();
-              finalMessages.forEach((m, index) => {
-                if (m.createdAt) {
-                  m.createdAt = new Date(m.createdAt.getTime() + index);
-                } else {
-                  m.createdAt = new Date(now.getTime() + index);
-                }
-              });
-
-              // Save the messages to the database
-              const saved = await dbCreateMessages({
-                messages: finalMessages.map((m) => ({
-                  conversationId,
-                  createdAt: m.createdAt,
-                  role: m.role,
-                  content: m.content,
-                  toolInvocations: m.toolInvocations
-                    ? JSON.parse(JSON.stringify(m.toolInvocations))
-                    : undefined,
-                  experimental_attachments: m.experimental_attachments
-                    ? JSON.parse(JSON.stringify(m.experimental_attachments))
-                    : undefined,
-                })),
-              });
 
               logWithTiming(
                 startTime,
@@ -340,5 +338,56 @@ export async function DELETE(req: Request) {
   } catch (error) {
     console.error('[chat/route] Delete error:', error);
     return new Response('Internal Server Error', { status: 500 });
+  }
+}
+
+async function saveResponses(
+  dataStream: DataStreamWriter,
+  responseMessages: ResponseMessage[],
+  conversationId: string,
+) {
+  try {
+    const finalMessages = appendResponseMessages({
+      messages: [],
+      responseMessages: responseMessages,
+    }).filter(
+      (m) =>
+        // Accept either a non-empty message or a tool invocation
+        m.content !== '' || (m.toolInvocations || []).length !== 0,
+    );
+
+    finalMessages.forEach((m, index) => {
+      if (m.createdAt) {
+        m.createdAt = new Date(m.createdAt.getTime() + index);
+      }
+    });
+
+    return await dbCreateMessages({
+      messages: finalMessages.map((message) => {
+        const messageId = generateUUID();
+
+        if (message.role === 'assistant') {
+          dataStream.writeMessageAnnotation({
+            messageIdFromServer: messageId,
+          });
+        }
+
+        return {
+          id: messageId,
+          conversationId,
+          createdAt: message.createdAt ?? new Date(),
+          role: message.role,
+          content: message.content,
+          toolInvocations: message.toolInvocations
+            ? JSON.parse(JSON.stringify(message.toolInvocations))
+            : undefined,
+          experimental_attachments: message.experimental_attachments
+            ? JSON.parse(JSON.stringify(message.experimental_attachments))
+            : undefined,
+        };
+      }),
+    });
+  } catch (error) {
+    console.error('Failed to save chat');
   }
 }
