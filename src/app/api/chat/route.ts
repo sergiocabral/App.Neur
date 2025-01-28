@@ -147,6 +147,10 @@ export async function POST(req: Request) {
           })
         : null;
 
+    if (newUserMessage) {
+      relevant.push(message);
+    }
+
     logWithTiming(startTime, '[chat/route] calling createDataStreamResponse');
 
     const abortData = {
