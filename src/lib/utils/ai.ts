@@ -292,7 +292,7 @@ export async function handleToolUpdateMessage(
           });
           const { experimental_partialOutputStream: partialOutputStream } =
             streamText({
-              model: openai('gpt-4-mini', { structuredOutputs: true }),
+              model: openai('gpt-4o-mini', { structuredOutputs: true }),
               system: `Update the tool call with the data provided by the user.
                 Only set confirm to true if the user explicitly confirms.
                 Only set canceled to true if the user explicitly cancels.`,
@@ -417,7 +417,12 @@ export function getToolUpdateMessage(
 
   const lastAssistantMessage =
     existingMessages.length > 0
-      ? existingMessages.findLast((message) => message.role === 'assistant')
+      ? existingMessages.find(
+          (message) =>
+            message.role === 'assistant' &&
+            message.toolInvocations?.length &&
+            message.toolInvocations?.length > 0,
+        )
       : null;
   const toolInvocations = lastAssistantMessage?.toolInvocations;
   const toolUpdate = toolInvocations?.at(-1);

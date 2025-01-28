@@ -193,8 +193,6 @@ export const swapTokens = (): ToolConfig => {
           };
         }
 
-        console.log(updatedToolCall);
-
         return {
           success: true,
           result: {

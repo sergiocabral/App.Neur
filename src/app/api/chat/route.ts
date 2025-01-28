@@ -1,13 +1,9 @@
 import { revalidatePath } from 'next/cache';
 
 import {
-  CoreAssistantMessage,
-  CoreTool,
-  CoreToolMessage,
   DataStreamWriter,
   Message,
   NoSuchToolError,
-  Output,
   appendResponseMessages,
   createDataStreamResponse,
   generateObject,
@@ -15,22 +11,14 @@ import {
   streamText,
 } from 'ai';
 import { performance } from 'perf_hooks';
-import { aborted } from 'util';
 import { z } from 'zod';
 
-import {
-  defaultModel,
-  defaultSystemPrompt,
-  defaultTools,
-  openai,
-} from '@/ai/providers';
+import { defaultModel, defaultSystemPrompt } from '@/ai/providers';
 import { wrapTools } from '@/ai/tools';
-import { swapTokens } from '@/ai/tools/swap';
 import { MAX_TOKEN_MESSAGES } from '@/lib/constants';
 import { isValidTokenUsage, logWithTiming } from '@/lib/utils';
 import {
   ResponseMessage,
-  getConfirmationResult,
   getToolUpdateMessage,
   handleToolUpdateMessage,
 } from '@/lib/utils/ai';
@@ -96,25 +84,6 @@ export async function POST(req: Request) {
       revalidatePath('/api/conversations');
     }
 
-    // Create a new user message in the DB if the current message is from the user
-    const newUserMessage =
-      message.role === 'user'
-        ? await dbCreateMessages({
-            messages: [
-              {
-                id: generateUUID(),
-                conversationId,
-                role: 'user',
-                content: message.content,
-                toolInvocations: [],
-                experimental_attachments: message.experimental_attachments
-                  ? JSON.parse(JSON.stringify(message.experimental_attachments))
-                  : undefined,
-              },
-            ],
-          })
-        : null;
-
     const toolUpdateMessage = getToolUpdateMessage(message, existingMessages);
 
     const isCanceledTool =
@@ -159,19 +128,24 @@ export async function POST(req: Request) {
         (a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0),
       );
 
-    // Convert the message to a confirmation ('confirm' or 'deny') if it is for a confirmation prompt, otherwise add it to the relevant messages
-    const confirmationResult = getConfirmationResult(message);
-    if (confirmationResult !== undefined) {
-      // Fake message to provide the confirmation selection to the model
-      relevant.push({
-        id: message.id,
-        content: confirmationResult,
-        role: 'user',
-        createdAt: new Date(),
-      });
-    } else {
-      relevant.push(message);
-    }
+    // Create a new user message in the DB if the current message is from the user
+    const newUserMessage =
+      message.role === 'user'
+        ? await dbCreateMessages({
+            messages: [
+              {
+                id: generateUUID(),
+                conversationId,
+                role: 'user',
+                content: message.content,
+                toolInvocations: [],
+                experimental_attachments: message.experimental_attachments
+                  ? JSON.parse(JSON.stringify(message.experimental_attachments))
+                  : undefined,
+              },
+            ],
+          })
+        : null;
 
     logWithTiming(startTime, '[chat/route] calling createDataStreamResponse');
 
