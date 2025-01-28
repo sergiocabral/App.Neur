@@ -30,6 +30,7 @@ import Lightbox from 'yet-another-react-lightbox';
 import 'yet-another-react-lightbox/styles.css';
 
 import { getToolConfig } from '@/ai/providers';
+import { TokenCard } from '@/ai/solana/jupiter';
 import { Confirmation } from '@/components/confimation';
 import { FloatingWallet } from '@/components/floating-wallet';
 import Logo from '@/components/logo';
@@ -56,6 +57,11 @@ import { DataStreamDelta } from '@/types/stream';
 import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { SavedPromptsMenu } from './components/saved-prompts-menu';
+
+const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
+  swapTokens: SwapCard,
+  searchTokenByName: TokenCard,
+};
 
 // Types
 interface UploadingImage extends Attachment {
@@ -245,10 +251,6 @@ function MessageAttachments({
     </div>
   );
 }
-
-const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
-  swapTokens: SwapCard,
-};
 
 function MessageToolInvocations({
   messageId,

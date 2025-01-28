@@ -117,18 +117,24 @@ export async function POST(req: Request) {
 
     const toolUpdateMessage = getToolUpdateMessage(message, existingMessages);
 
+    const isCanceledTool =
+      message.role === 'user' &&
+      toolUpdateMessage.toolCallResults?.step === 'canceled';
+
     if (
       toolUpdateMessage.toolCallId !== undefined &&
       toolUpdateMessage.toolName !== undefined &&
       toolUpdateMessage.messageIdToUpdate !== undefined &&
       toolUpdateMessage.toolCallResults?.step !== 'completed' &&
-      toolUpdateMessage.toolCallResults?.step !== 'canceled' &&
+      !isCanceledTool &&
       message
     ) {
       if (message.role === 'assistant') {
         return new Response('OK', { status: 200 });
       }
-      return handleToolUpdateMessage(toolUpdateMessage, message);
+      if (toolUpdateMessage.toolCallResults?.step !== undefined) {
+        return handleToolUpdateMessage(toolUpdateMessage, message);
+      }
     }
 
     // Build the system prompt and append the history of attachments
@@ -217,11 +223,12 @@ export async function POST(req: Request) {
             ),
           },
           abortSignal: abortData?.abortController?.signal,
-          experimental_toolCallStreaming: true,
+          toolCallStreaming: true,
           experimental_telemetry: {
             isEnabled: true,
             functionId: 'stream-text',
           },
+          experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_repairToolCall: async ({
             toolCall,
             tools,
@@ -249,7 +256,7 @@ export async function POST(req: Request) {
             });
             return { ...toolCall, args: JSON.stringify(repairedArgs) };
           },
-          experimental_transform: smoothStream(),
+          experimental_activeTools: toolsRequired,
           maxSteps: 15,
           messages: relevant,
           onStepFinish: async (step) => {
@@ -268,7 +275,7 @@ export async function POST(req: Request) {
 
               const saved = await saveResponses(
                 dataStream,
-                responses,
+                response.messages,
                 conversationId,
               );
 

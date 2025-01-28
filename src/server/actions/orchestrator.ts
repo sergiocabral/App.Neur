@@ -8,7 +8,6 @@ export async function getToolsFromOrchestrator(
   messages: Message[] | undefined,
   excludeConfirmationTool: boolean,
 ): Promise<{ usage: LanguageModelUsage; toolsRequired: string[] | undefined }> {
-  console.log(orchestrationPrompt);
   const { object: toolsRequired, usage } = await generateObject({
     model: orchestratorModel,
     system: orchestrationPrompt,
@@ -30,7 +29,7 @@ export async function getToolsFromOrchestrator(
   } else {
     return {
       usage,
-      toolsRequired,
+      toolsRequired: [...new Set(toolsRequired)],
     };
   }
 }

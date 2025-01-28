@@ -13,6 +13,13 @@ interface TokenBalanceProps extends WrappedToolProps {
   walletAddress: string;
 }
 
+export interface JupiterToken {
+  mint: string;
+  name: string;
+  symbol: string;
+  logoURI: string | null;
+}
+
 export const searchTokenByName = () => {
   const metadata = {
     description: 'Search for a token address by its name or symbol.',
@@ -20,10 +27,15 @@ export const searchTokenByName = () => {
       token: z.string().describe('The token symbol or name'),
     }),
   };
-  const buildTool = ({}: WrappedToolProps) =>
+  const buildTool = ({ abortData }: WrappedToolProps) =>
     tool({
       ...metadata,
-      execute: async ({ token }) => {
+      execute: async ({
+        token,
+      }): Promise<{
+        success: boolean;
+        result: JupiterToken;
+      }> => {
         const tokens = await searchJupiterTokens(token);
         const searchQuery = token.toLowerCase();
 
@@ -43,11 +55,18 @@ export const searchTokenByName = () => {
           })
           .slice(0, 1);
 
+        // if (abortData?.abortController) {
+        //   abortData.aborted = true;
+        //   abortData?.abortController.abort();
+        // }
+
         return {
           success: true,
-          data: {
+          result: {
             symbol: results[0].symbol,
             mint: results[0].address,
+            name: results[0].name,
+            logoURI: results[0].logoURI,
           },
         };
       },
@@ -69,7 +88,13 @@ export const searchTokenByMint = () =>
           'Mint address for the token. Example So11111111111111111111111111111111111111112',
         ),
     }),
-    execute: async ({ tokenMint }) => {
+    execute: async ({
+      tokenMint,
+    }): Promise<{
+      success: boolean;
+      result: JupiterToken;
+      noFollowUp: boolean;
+    }> => {
       const tokens = await searchJupiterTokens(tokenMint);
       const searchQuery = tokenMint.toLowerCase();
 
@@ -87,10 +112,13 @@ export const searchTokenByMint = () =>
 
       return {
         success: true,
-        data: {
+        result: {
           symbol: results[0].symbol,
           mint: results[0].address,
+          name: results[0].name,
+          logoURI: results[0].logoURI,
         },
+        noFollowUp: true,
       };
     },
   });

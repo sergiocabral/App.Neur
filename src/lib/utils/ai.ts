@@ -12,7 +12,7 @@ import {
 import { z } from 'zod';
 
 import { openai } from '@/ai/providers';
-import { toolConfirmationRegistry } from '@/ai/tools';
+import toolConfirmationRegistry from '@/ai/tools/confirmation-registry';
 import { convertUserResponseToBoolean } from '@/server/actions/ai';
 import {
   dbUpdateMessageToolInvocations,

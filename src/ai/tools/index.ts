@@ -25,10 +25,6 @@ export interface WrappedToolProps {
   extraData?: any;
 }
 
-export const toolConfirmationRegistry: Record<string, Function> = {
-  [swapTokens.name]: performSwap,
-};
-
 export const allTools: Record<string, ToolConfig> = {
   swapTokens: swapTokens(),
   searchTokenByName: searchTokenByName(),

@@ -53,6 +53,11 @@ export const swapTokens = (): ToolConfig => {
         { inputAmount, inputToken, outputToken, price },
         { toolCallId },
       ) => {
+        let updatedToolCall = {
+          inputToken,
+          outputToken,
+          price,
+        };
         streamUpdate({
           stream: dataStream,
           update: {
@@ -98,12 +103,6 @@ export const swapTokens = (): ToolConfig => {
               }),
             });
 
-          let updatedToolCall = {
-            inputToken,
-            outputToken,
-            price,
-          };
-
           for await (const delta of partialOutputStream) {
             const updatedParameters = {
               inputToken: delta?.inputToken ?? inputToken,
@@ -123,13 +122,19 @@ export const swapTokens = (): ToolConfig => {
                 },
               },
             });
-            updatedToolCall = updatedParameters;
+            updatedToolCall = {
+              ...updatedToolCall,
+              ...updatedParameters,
+            };
           }
         } catch (error) {
           console.log(`${error}`);
         }
 
-        if (askForConfirmation || !(inputToken.mint && outputToken.mint)) {
+        if (
+          askForConfirmation ||
+          !(updatedToolCall.inputToken.mint && updatedToolCall.outputToken.mint)
+        ) {
           streamUpdate({
             stream: dataStream,
             update: {
@@ -153,8 +158,6 @@ export const swapTokens = (): ToolConfig => {
               toolCallId,
               content: {
                 step: 'processing',
-                inputAmount,
-                price,
               },
             },
           });
@@ -162,10 +165,10 @@ export const swapTokens = (): ToolConfig => {
           const result = await performSwap({
             inputAmount,
             inputToken: {
-              mint: inputToken.mint,
+              mint: updatedToolCall.inputToken.mint,
             },
             outputToken: {
-              mint: outputToken.mint,
+              mint: updatedToolCall.outputToken.mint,
             },
           });
           streamUpdate({
@@ -184,22 +187,20 @@ export const swapTokens = (): ToolConfig => {
             result: {
               step: result.success ? 'completed' : 'failed',
               inputAmount,
-              inputToken: inputToken,
-              outputToken: outputToken,
-              price,
+              ...updatedToolCall,
               signature: result.result?.signature,
             },
           };
         }
+
+        console.log(updatedToolCall);
 
         return {
           success: true,
           result: {
             step: 'awaiting-confirmation',
             inputAmount,
-            inputToken: inputToken,
-            outputToken: outputToken,
-            price,
+            ...updatedToolCall,
           },
         };
       },
