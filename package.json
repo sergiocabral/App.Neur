@@ -19,6 +19,7 @@
   "dependencies": {
     "@ai-sdk/anthropic": "^1.1.5",
     "@ai-sdk/openai": "^1.1.5",
+    "@ai-sdk/ui-utils": "^1.1.6",
     "@bonfida/spl-name-service": "^3.0.8",
     "@mem0/vercel-ai-provider": "^0.0.10",
     "@prisma/client": "^6.2.1",

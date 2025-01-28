@@ -16,6 +16,7 @@ import { jupiterTools } from './solana/jupiter';
 import { magicEdenTools } from './solana/magic-eden';
 import { pumpfunTools } from './solana/pumpfun';
 import { solanaTools } from './solana/solana';
+import { getToolMetadata } from './tools';
 
 const usingAnthropic = !!process.env.ANTHROPIC_API_KEY;
 
@@ -154,30 +155,6 @@ export const defaultTools: Record<string, ToolConfig> = {
   ...birdeyeTools,
 };
 
-export function filterTools(
-  tools: Record<string, ToolConfig>,
-): Record<string, ToolConfig> {
-  const disabledTools = process.env.NEXT_PUBLIC_DISABLED_TOOLS
-    ? JSON.parse(process.env.NEXT_PUBLIC_DISABLED_TOOLS)
-    : [];
-
-  return Object.fromEntries(
-    Object.entries(tools).filter(([toolName, toolConfig]) => {
-      if (disabledTools.includes(toolName)) {
-        return false;
-      }
-      if(toolConfig.requiredEnvVars){
-        for (const envVar of toolConfig.requiredEnvVars) {
-          if(!process.env[envVar] || process.env[envVar] == ''){
-            return false;
-          }
-        }
-      }
-      return true;
-    }),
-  );
-}
-
 export const coreTools: Record<string, ToolConfig> = {
   ...actionTools,
   ...utilTools,
@@ -241,32 +218,15 @@ Your Task:
 Analyze the user's message and return the appropriate tools as a **JSON array of strings**.  
 
 Rules:
-- Only include the askForConfirmation tool if the user's message requires a transaction signature or if they are creating an action.
 - Only return the toolsets in the format: ["toolset1", "toolset2", ...].  
 - Do not add any text, explanations, or comments outside the array.
 - Be complete — include all necessary toolsets to handle the request, if you're unsure, it's better to include the tool than to leave it out.
 - If the request cannot be completed with the available toolsets, return an array describing the unknown tools ["INVALID_TOOL:\${INVALID_TOOL_NAME}"].
 
 Available Tools:
-${Object.entries(defaultTools)
-  .filter(([deprecated]) => !deprecated)
-  .map(([name, { description }]) => `- **${name}**: ${description}`)
-  .join('\n')}
+${getToolMetadata()}
 `;
 
 export function getToolConfig(toolName: string): ToolConfig | undefined {
   return defaultTools[toolName];
-}
-
-export function getToolsFromRequiredTools(
-  toolNames: string[],
-): Record<string, ToolConfig> {
-  const enabledTools = filterTools(defaultTools);
-  return toolNames.reduce((acc: Record<string, ToolConfig>, toolName) => {
-    const tool = enabledTools[toolName];
-    if (tool) {
-      acc[toolName] = tool;
-    }
-    return acc;
-  }, {});
 }

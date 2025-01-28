@@ -13,41 +13,51 @@ interface TokenBalanceProps extends WrappedToolProps {
   walletAddress: string;
 }
 
-export const searchTokenByName = () =>
-  tool({
+export const searchTokenByName = () => {
+  const metadata = {
     description: 'Search for a token address by its name or symbol.',
     parameters: z.object({
       token: z.string().describe('The token symbol or name'),
     }),
-    execute: async ({ token }) => {
-      const tokens = await searchJupiterTokens(token);
-      const searchQuery = token.toLowerCase();
+  };
+  const buildTool = ({}: WrappedToolProps) =>
+    tool({
+      ...metadata,
+      execute: async ({ token }) => {
+        const tokens = await searchJupiterTokens(token);
+        const searchQuery = token.toLowerCase();
 
-      // Search and rank tokens
-      const results = tokens
-        .sort((a, b) => {
-          // Exact matches first
-          const aExact =
-            a.symbol.toLowerCase() === searchQuery ||
-            a.name.toLowerCase() === searchQuery;
-          const bExact =
-            b.symbol.toLowerCase() === searchQuery ||
-            b.name.toLowerCase() === searchQuery;
-          if (aExact && !bExact) return -1;
-          if (!aExact && bExact) return 1;
-          return 0;
-        })
-        .slice(0, 1);
+        // Search and rank tokens
+        const results = tokens
+          .sort((a, b) => {
+            // Exact matches first
+            const aExact =
+              a.symbol.toLowerCase() === searchQuery ||
+              a.name.toLowerCase() === searchQuery;
+            const bExact =
+              b.symbol.toLowerCase() === searchQuery ||
+              b.name.toLowerCase() === searchQuery;
+            if (aExact && !bExact) return -1;
+            if (!aExact && bExact) return 1;
+            return 0;
+          })
+          .slice(0, 1);
 
-      return {
-        success: true,
-        data: {
-          symbol: results[0].symbol,
-          mint: results[0].address,
-        },
-      };
-    },
-  });
+        return {
+          success: true,
+          data: {
+            symbol: results[0].symbol,
+            mint: results[0].address,
+          },
+        };
+      },
+    });
+
+  return {
+    metadata,
+    buildTool,
+  };
+};
 
 export const searchTokenByMint = () =>
   tool({

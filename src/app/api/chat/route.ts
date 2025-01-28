@@ -22,9 +22,9 @@ import {
   defaultModel,
   defaultSystemPrompt,
   defaultTools,
-  getToolsFromRequiredTools,
   openai,
 } from '@/ai/providers';
+import { wrapTools } from '@/ai/tools';
 import { swapTokens } from '@/ai/tools/swap';
 import { MAX_TOKEN_MESSAGES } from '@/lib/constants';
 import { isValidTokenUsage, logWithTiming } from '@/lib/utils';
@@ -122,6 +122,7 @@ export async function POST(req: Request) {
       toolUpdateMessage.toolName !== undefined &&
       toolUpdateMessage.messageIdToUpdate !== undefined &&
       toolUpdateMessage.toolCallResults?.step !== 'completed' &&
+      toolUpdateMessage.toolCallResults?.step !== 'canceled' &&
       message
     ) {
       if (message.role === 'assistant') {
@@ -196,11 +197,6 @@ export async function POST(req: Request) {
           '[chat/route] getToolsFromOrchestrator complete',
         );
 
-        // Get a list of required tools from the orchestrator
-        const tools = toolsRequired
-          ? getToolsFromRequiredTools(toolsRequired)
-          : defaultTools;
-
         const responses: ResponseMessage[] = [];
 
         // Begin streaming text from the model
@@ -208,11 +204,17 @@ export async function POST(req: Request) {
           model: defaultModel,
           system: systemPrompt,
           tools: {
-            swapTokens: swapTokens({
-              dataStream,
-              abortData,
-              extraData: { walletAddress: publicKey, askForConfirmation: true },
-            }),
+            ...wrapTools(
+              {
+                dataStream,
+                abortData,
+                extraData: {
+                  walletAddress: publicKey,
+                  askForConfirmation: true,
+                },
+              },
+              toolsRequired,
+            ),
           },
           abortSignal: abortData?.abortController?.signal,
           experimental_toolCallStreaming: true,
