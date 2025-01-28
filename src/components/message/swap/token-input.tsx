@@ -44,7 +44,7 @@ export function TokenInput({
             value={value}
             onChange={(e) => onChange?.(e.target.value)}
             disabled={disabled}
-            className="h-auto border-0 bg-transparent p-0 text-2xl focus-visible:ring-0 focus-visible:ring-offset-0"
+            className="h-auto border-0 bg-transparent p-0 text-sm focus-visible:ring-0 focus-visible:ring-offset-0 md:text-lg"
           />
           <TokenButton token={token} placeholder="Select token" />
         </div>

@@ -507,8 +507,8 @@ function ChatMessage({
                       const thumbnailPattern = /_thumb\.(png|jpg|jpeg|gif)$/i;
                       const isThumbnail = thumbnailPattern.test(src);
 
-                      const width = isThumbnail ? 40 : 500;
-                      const height = isThumbnail ? 40 : 300;
+                      const width = isThumbnail ? 40 : 200;
+                      const height = isThumbnail ? 40 : 200;
 
                       // Fallback to Image component with default dimensions
                       return (
