@@ -173,6 +173,14 @@ export function LaunchResult({ data, addToolResult }: LaunchResultProps) {
     );
   }
 
+  const confirmButtonText = hasChanges
+    ? 'Save Changes'
+    : result?.step === 'awaiting-confirmation'
+      ? 'Confirm Launch'
+      : result?.step === 'updating'
+        ? 'Updating...'
+        : 'Launching...';
+
   const showInputs = !['processing', 'completed', 'canceled'].includes(
     result?.step || '',
   );
@@ -290,11 +298,7 @@ export function LaunchResult({ data, addToolResult }: LaunchResultProps) {
                   result?.step !== 'awaiting-confirmation' && !hasChanges
                 }
               >
-                {hasChanges
-                  ? 'Save Changes'
-                  : result?.step === 'awaiting-confirmation'
-                    ? 'Confirm Launch'
-                    : 'Launching...'}
+                {confirmButtonText}
               </Button>
             </div>
           </div>

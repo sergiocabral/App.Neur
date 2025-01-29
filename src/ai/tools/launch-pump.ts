@@ -70,6 +70,16 @@ export const launchPumpFun = () => {
       twitter: z.string().optional().describe('The twitter url of the token'),
       telegram: z.string().optional().describe('The telegram url of the token'),
     }),
+    updateParameters: z.object({
+      name: z.string(),
+      symbol: z.string(),
+      description: z.string(),
+      initalBuySOL: z.number(),
+      image: z.string(),
+      website: z.string(),
+      twitter: z.string(),
+      telegram: z.string(),
+    }),
   };
   const buildTool = ({
     dataStream = undefined,

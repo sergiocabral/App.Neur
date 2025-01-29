@@ -41,6 +41,17 @@ export const swapTokens = (): ToolConfig => {
       outputToken: tokenSchema,
       price: z.number().optional(),
     }),
+    updateParameters: z.object({
+      inputAmount: z.number(),
+      inputToken: z.object({
+        symbol: z.string(),
+        mint: z.string(),
+      }),
+      outputToken: z.object({
+        symbol: z.string(),
+        mint: z.string(),
+      }),
+    }),
   };
   const buildTool = ({
     dataStream = undefined,

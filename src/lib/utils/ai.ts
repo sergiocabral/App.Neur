@@ -9,11 +9,10 @@ import {
   createDataStreamResponse,
   streamText,
 } from 'ai';
-import { get } from 'lodash';
 import { z } from 'zod';
 
 import { openai } from '@/ai/providers';
-import { allTools, getToolParameters } from '@/ai/tools';
+import { allTools, getToolUpdateParameters } from '@/ai/tools';
 import { updateToolResultMessage } from '@/server/db/queries';
 
 import { diffObjects, streamUpdate } from '../utils';
@@ -293,19 +292,23 @@ export async function handleToolUpdateMessage(
               },
             },
           });
-          const toolParameters = getToolParameters(toolUpdateMessage.toolName!);
-          if (!toolParameters) {
+          const toolUpdateParameters = getToolUpdateParameters(
+            toolUpdateMessage.toolName!,
+          );
+          if (!toolUpdateParameters) {
             return;
           }
-          const stringifiedToolParameters =
-            zodSchema(toolParameters).jsonSchema;
+          const stringifiedToolParameters = JSON.stringify(
+            zodSchema(toolUpdateParameters).jsonSchema,
+          );
           const { experimental_partialOutputStream: partialOutputStream } =
             streamText({
-              model: openai('gpt-4o-mini', { structuredOutputs: true }),
-              system: `Update the tool call parameterswith the data provided by the user.
-                Only set confirm to true if the user explicitly confirms.
-                Only set canceled to true if the user explicitly cancels.
-                toolParameters schema: ${stringifiedToolParameters} 
+              model: openai('gpt-4o', { structuredOutputs: true }),
+              system: `Update the tool call parameters with the data provided by the user.
+              Only set confirm to true if the user explicitly confirms with words such as "confirm" or "yes".
+              Only set canceled to true if the user explicitly cancels with words such as "cancel" or "no".
+              Do not set confirm or canceled to true if the user only requests to update parameters.
+              toolParameters schema: ${stringifiedToolParameters}
                 `,
               messages: [
                 {
@@ -314,9 +317,13 @@ export async function handleToolUpdateMessage(
                 },
                 message,
               ],
+              experimental_telemetry: {
+                isEnabled: true,
+                functionId: 'stream-text',
+              },
               experimental_output: Output.object({
                 schema: z.object({
-                  toolParameters,
+                  toolParameters: toolUpdateParameters,
                   confirmed: z.boolean(),
                   canceled: z.boolean(),
                 }),
@@ -325,32 +332,31 @@ export async function handleToolUpdateMessage(
             });
 
           for await (const delta of partialOutputStream) {
-            console.log(delta);
             const step =
               delta.confirmed || delta.canceled
                 ? delta.canceled
                   ? 'canceled'
                   : 'confirmed'
                 : 'awaiting-confirmation';
-            const newToolCallResults = {
-              ...updatedToolCall,
-              ...delta,
-              step,
-            };
+            // const newToolCallResults = {
+            //   ...updatedToolCall,
+            //   ...delta.toolParameters,
+            //   step,
+            // };
 
-            const diff = diffObjects(updatedToolCall, newToolCallResults);
-            streamUpdate({
-              stream: dataStream,
-              update: {
-                type: 'stream-result-data',
-                toolCallId: toolUpdateMessage.toolCallId!,
-                content: {
-                  ...diff,
-                  step: 'updating',
-                },
-              },
-            });
-            updatedToolCall = newToolCallResults;
+            // const diff = diffObjects(updatedToolCall, newToolCallResults);
+            // streamUpdate({
+            //   stream: dataStream,
+            //   update: {
+            //     type: 'stream-result-data',
+            //     toolCallId: toolUpdateMessage.toolCallId!,
+            //     content: {
+            //       ...diff,
+            //       step: 'updating',
+            //     },
+            //   },
+            // });
+            // updatedToolCall = newToolCallResults;
 
             updatedToolCall = {
               ...updatedToolCall,

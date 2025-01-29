@@ -10,6 +10,7 @@ interface ToolMetadata {
   description: string;
   parameters: ZodTypeAny;
   requiredEnvVars?: string[];
+  updateParameters?: ZodTypeAny;
 }
 export interface ToolConfig {
   metadata: ToolMetadata;
@@ -70,6 +71,14 @@ export function getToolParameters(toolName: string) {
     return undefined;
   }
   return tool.metadata.parameters;
+}
+
+export function getToolUpdateParameters(toolName: string) {
+  const tool = allTools[toolName];
+  if (!tool) {
+    return undefined;
+  }
+  return tool.metadata.updateParameters ?? tool.metadata.parameters;
 }
 
 export function filterTools(
