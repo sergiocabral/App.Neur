@@ -27,7 +27,6 @@ export const performCreateAction = async (
   },
 ) => {
   try {
-    console.log('actionProps', actionProps);
     const authResult = await verifyUser();
     const authUserId = authResult?.data?.data?.id;
 
@@ -153,7 +152,7 @@ export const createAction = () => {
           ),
       }),
       execute: async (originalToolCall, { toolCallId }) => {
-        let updatedToolCall: {
+        const updatedToolCall: {
           name: string;
           message: string;
           frequency: number;

@@ -66,84 +66,77 @@ export default function CreateActionMessage({
   };
   addToolResult: (result: CreateActionDataResult) => void;
 }) {
-  if (!data) return null;
-  const { result } = data;
-
-  const step = result?.step ?? 'tool-search';
-
-  const [message, setMessage] = useState(result?.message || '');
+  const [message, setMessage] = useState(data?.result?.message || '');
   const [frequency, setFrequency] = useState<number>(
-    result?.frequency || TIME_UNITS.hour,
+    data?.result?.frequency || TIME_UNITS.hour,
   );
   const [frequencyValue, setFrequencyValue] = useState('1');
   const [frequencyUnit, setFrequencyUnit] = useState<TimeUnit>('hour');
   const [startTimeOffset, setStartTimeOffset] = useState<number>(
-    result?.startTimeOffset || 0,
+    data?.result?.startTimeOffset || 0,
   );
   const [offsetValue, setOffsetValue] = useState('0');
   const [offsetUnit, setOffsetUnit] = useState<OffsetUnit>('minute');
   const [hasChanges, setHasChanges] = useState(false);
   const [nextExecutionTime, setNextExecutionTime] = useState('');
 
+  // Move all useEffect hooks before any conditional returns
   useEffect(() => {
-    if (result?.message) {
-      setMessage(result.message);
+    if (data?.result?.message) {
+      setMessage(data.result.message);
     }
-  }, [result?.message]);
+  }, [data?.result?.message]);
 
-  // Initialize frequency value and unit from milliseconds
   useEffect(() => {
-    if (result?.frequency) {
+    if (data?.result?.frequency) {
       // Find the largest unit that divides evenly into the frequency
       let value: number;
       let unit: TimeUnit;
 
-      if (result?.frequency % TIME_UNITS.day === 0) {
-        value = result?.frequency / TIME_UNITS.day;
+      if (data.result.frequency % TIME_UNITS.day === 0) {
+        value = data.result.frequency / TIME_UNITS.day;
         unit = 'day';
-      } else if (result.frequency % TIME_UNITS.hour === 0) {
-        value = result.frequency / TIME_UNITS.hour;
+      } else if (data.result.frequency % TIME_UNITS.hour === 0) {
+        value = data.result.frequency / TIME_UNITS.hour;
         unit = 'hour';
-      } else if (result.frequency % TIME_UNITS.minute === 0) {
-        value = result.frequency / TIME_UNITS.minute;
+      } else if (data.result.frequency % TIME_UNITS.minute === 0) {
+        value = data.result.frequency / TIME_UNITS.minute;
         unit = 'minute';
       } else {
-        value = result.frequency; // Use the original seconds value
+        value = data.result.frequency; // Use the original seconds value
         unit = 'second';
       }
 
       setFrequencyValue(value.toString());
       setFrequencyUnit(unit);
-      setFrequency(result.frequency);
+      setFrequency(data.result.frequency);
     }
-  }, [result?.frequency]);
+  }, [data?.result?.frequency]);
 
-  // Initialize offset value and unit from milliseconds
   useEffect(() => {
-    if (result?.startTimeOffset) {
+    if (data?.result?.startTimeOffset) {
       let value: number;
       let unit: OffsetUnit;
 
-      if (result.startTimeOffset % OFFSET_UNITS.day === 0) {
-        value = result.startTimeOffset / OFFSET_UNITS.day;
+      if (data.result.startTimeOffset % OFFSET_UNITS.day === 0) {
+        value = data.result.startTimeOffset / OFFSET_UNITS.day;
         unit = 'day';
-      } else if (result.startTimeOffset % OFFSET_UNITS.hour === 0) {
-        value = result.startTimeOffset / OFFSET_UNITS.hour;
+      } else if (data.result.startTimeOffset % OFFSET_UNITS.hour === 0) {
+        value = data.result.startTimeOffset / OFFSET_UNITS.hour;
         unit = 'hour';
       } else {
-        value = result.startTimeOffset / OFFSET_UNITS.minute;
+        value = data.result.startTimeOffset / OFFSET_UNITS.minute;
         unit = 'minute';
       }
 
       setOffsetValue(value.toString());
       setOffsetUnit(unit);
-      setStartTimeOffset(result.startTimeOffset);
+      setStartTimeOffset(data.result.startTimeOffset);
     }
-  }, [result?.startTimeOffset]);
+  }, [data?.result?.startTimeOffset]);
 
-  // Update next execution time whenever offset changes
   useEffect(() => {
-    if (result?.step === 'completed') return;
+    if (data?.result?.step === 'completed') return;
 
     const calculateNextExecution = () => {
       const now = new Date();
@@ -161,7 +154,12 @@ export default function CreateActionMessage({
 
       return () => clearInterval(interval);
     }
-  }, [startTimeOffset, result?.step]);
+  }, [startTimeOffset, data?.result?.step]);
+
+  if (!data) return null;
+  const { result } = data;
+
+  const step = result?.step ?? 'tool-search';
 
   const handleMessageChange = (newMessage: string) => {
     setMessage(newMessage);
