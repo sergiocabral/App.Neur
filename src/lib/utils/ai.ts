@@ -1,3 +1,4 @@
+import { zodSchema } from '@ai-sdk/ui-utils';
 import {
   CoreAssistantMessage,
   CoreMessage,
@@ -7,18 +8,13 @@ import {
   Output,
   createDataStreamResponse,
   streamText,
-  tool,
 } from 'ai';
+import { get } from 'lodash';
 import { z } from 'zod';
 
 import { openai } from '@/ai/providers';
-import toolConfirmationRegistry from '@/ai/tools/confirmation-registry';
-import { convertUserResponseToBoolean } from '@/server/actions/ai';
-import {
-  dbUpdateMessageToolInvocations,
-  updateToolResultMessage,
-} from '@/server/db/queries';
-import { ToolUpdate } from '@/types/util';
+import { allTools, getToolParameters } from '@/ai/tools';
+import { updateToolResultMessage } from '@/server/db/queries';
 
 import { diffObjects, streamUpdate } from '../utils';
 
@@ -203,6 +199,10 @@ async function handleConfirmation(
   ) {
     return;
   }
+  const toolConfirmation = allTools[toolUpdateMessage.toolName]?.confirm;
+  if (!toolConfirmation) {
+    return;
+  }
 
   dataStream.writeData({
     type: 'stream-result-data',
@@ -216,8 +216,6 @@ async function handleConfirmation(
   let updatedToolCallResults = {
     ...finalToolResults,
   };
-
-  const toolConfirmation = toolConfirmationRegistry[toolUpdateMessage.toolName];
 
   try {
     const { success, result } = await toolConfirmation(finalToolResults);
@@ -264,6 +262,10 @@ export async function handleToolUpdateMessage(
   toolUpdateMessage: ToolUpdateMessage,
   message: Message,
 ) {
+  if (toolUpdateMessage.toolName === undefined) {
+    return;
+  }
+
   let updatedToolCall = {
     ...toolUpdateMessage.toolCallResults,
   };
@@ -277,6 +279,7 @@ export async function handleToolUpdateMessage(
         await handleConfirmation(dataStream, toolUpdateMessage);
         return;
       }
+      // Update the tool call with the data provided by the user
       try {
         if (!toolUpdateMessage.isDataCall) {
           streamUpdate({
@@ -290,12 +293,20 @@ export async function handleToolUpdateMessage(
               },
             },
           });
+          const toolParameters = getToolParameters(toolUpdateMessage.toolName!);
+          if (!toolParameters) {
+            return;
+          }
+          const stringifiedToolParameters =
+            zodSchema(toolParameters).jsonSchema;
           const { experimental_partialOutputStream: partialOutputStream } =
             streamText({
               model: openai('gpt-4o-mini', { structuredOutputs: true }),
-              system: `Update the tool call with the data provided by the user.
+              system: `Update the tool call parameterswith the data provided by the user.
                 Only set confirm to true if the user explicitly confirms.
-                Only set canceled to true if the user explicitly cancels.`,
+                Only set canceled to true if the user explicitly cancels.
+                toolParameters schema: ${stringifiedToolParameters} 
+                `,
               messages: [
                 {
                   role: 'user',
@@ -305,18 +316,7 @@ export async function handleToolUpdateMessage(
               ],
               experimental_output: Output.object({
                 schema: z.object({
-                  inputToken: z.object({
-                    symbol: z.string(),
-                    mint: z.string(),
-                    balance: z.number(),
-                  }),
-                  outputToken: z.object({
-                    symbol: z.string(),
-                    mint: z.string(),
-                    balance: z.number(),
-                  }),
-                  inputAmount: z.number(),
-                  price: z.number(),
+                  toolParameters,
                   confirmed: z.boolean(),
                   canceled: z.boolean(),
                 }),
@@ -325,14 +325,13 @@ export async function handleToolUpdateMessage(
             });
 
           for await (const delta of partialOutputStream) {
+            console.log(delta);
             const step =
               delta.confirmed || delta.canceled
                 ? delta.canceled
                   ? 'canceled'
                   : 'confirmed'
                 : 'awaiting-confirmation';
-            delete delta.confirmed;
-            delete delta.canceled;
             const newToolCallResults = {
               ...updatedToolCall,
               ...delta,
@@ -355,7 +354,7 @@ export async function handleToolUpdateMessage(
 
             updatedToolCall = {
               ...updatedToolCall,
-              ...delta,
+              ...delta.toolParameters,
               step,
             };
           }

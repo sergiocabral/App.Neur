@@ -34,6 +34,7 @@ import { TokenCard } from '@/ai/solana/jupiter';
 import { Confirmation } from '@/components/confimation';
 import { FloatingWallet } from '@/components/floating-wallet';
 import Logo from '@/components/logo';
+import { LaunchResult } from '@/components/message/pumpfun-launch/launch-result';
 import { SwapCard } from '@/components/message/swap/swap-card';
 import { ToolResult } from '@/components/message/tool-result';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -61,6 +62,7 @@ import { SavedPromptsMenu } from './components/saved-prompts-menu';
 const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
   swapTokens: SwapCard,
   searchTokenByName: TokenCard,
+  launchPumpFun: LaunchResult,
 };
 
 // Types

@@ -207,5 +207,6 @@ export const swapTokens = (): ToolConfig => {
   return {
     metadata,
     buildTool,
+    confirm: performSwap,
   };
 };

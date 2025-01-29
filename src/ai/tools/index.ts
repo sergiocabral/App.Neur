@@ -1,19 +1,20 @@
 import { zodSchema } from '@ai-sdk/ui-utils';
 import { DataStreamWriter } from 'ai';
+import { ZodType, ZodTypeAny, ZodTypeDef } from 'zod';
 
-import { performSwap } from '@/server/actions/swap';
-
+import { launchPumpFun } from './launch-pump';
 import { searchTokenByName } from './search-token';
 import { swapTokens } from './swap';
 
 interface ToolMetadata {
   description: string;
-  parameters: any;
+  parameters: ZodTypeAny;
   requiredEnvVars?: string[];
 }
 export interface ToolConfig {
   metadata: ToolMetadata;
   buildTool: (props: WrappedToolProps) => any;
+  confirm?: (props: any) => Promise<{ success: boolean; result?: any }>;
 }
 
 export interface WrappedToolProps {
@@ -21,6 +22,7 @@ export interface WrappedToolProps {
   abortData?: {
     aborted: boolean;
     abortController: AbortController;
+    shouldAbort?: boolean;
   };
   extraData?: any;
 }
@@ -28,6 +30,7 @@ export interface WrappedToolProps {
 export const allTools: Record<string, ToolConfig> = {
   swapTokens: swapTokens(),
   searchTokenByName: searchTokenByName(),
+  launchPumpFun: launchPumpFun(),
 };
 
 export const wrapTools = (
@@ -46,7 +49,7 @@ export const wrapTools = (
   );
 };
 
-export function getToolMetadata() {
+export function getAllToolMetadata() {
   const filteredTools = filterTools(allTools);
   return Object.entries(filteredTools)
     .map(([name, { metadata }]) => {
@@ -59,6 +62,14 @@ export function getToolMetadata() {
       return stringifiedMetadata;
     })
     .join('\n');
+}
+
+export function getToolParameters(toolName: string) {
+  const tool = allTools[toolName];
+  if (!tool) {
+    return undefined;
+  }
+  return tool.metadata.parameters;
 }
 
 export function filterTools(

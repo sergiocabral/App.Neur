@@ -61,6 +61,10 @@ export async function POST(req: Request) {
     if (!message) return new Response('No message found', { status: 400 });
     logWithTiming(startTime, '[chat/route] message received');
 
+    if (message.role === 'assistant') {
+      return new Response('OK', { status: 200 });
+    }
+
     // Fetch existing messages for the conversation
     const existingMessages =
       (await dbGetConversationMessages({
@@ -98,9 +102,6 @@ export async function POST(req: Request) {
       !isCanceledTool &&
       message
     ) {
-      if (message.role === 'assistant') {
-        return new Response('OK', { status: 200 });
-      }
       if (toolUpdateMessage.toolCallResults?.step !== undefined) {
         return handleToolUpdateMessage(toolUpdateMessage, message);
       }
@@ -156,6 +157,7 @@ export async function POST(req: Request) {
     const abortData = {
       aborted: false,
       abortController: new AbortController(),
+      shouldAbort: false,
     };
 
     // Begin the stream response
@@ -239,8 +241,11 @@ export async function POST(req: Request) {
           messages: relevant,
           onStepFinish: async (step) => {
             responses.push(...step.response.messages);
-            if (abortData.aborted && userId) {
+            if ((abortData.aborted || abortData.shouldAbort) && userId) {
               await saveResponses(dataStream, responses, conversationId);
+              if (abortData.shouldAbort) {
+                abortData.abortController.abort();
+              }
             }
           },
           async onFinish({ response, usage }) {

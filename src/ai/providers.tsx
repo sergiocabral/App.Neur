@@ -16,7 +16,7 @@ import { jupiterTools } from './solana/jupiter';
 import { magicEdenTools } from './solana/magic-eden';
 import { pumpfunTools } from './solana/pumpfun';
 import { solanaTools } from './solana/solana';
-import { getToolMetadata } from './tools';
+import { getAllToolMetadata } from './tools';
 
 const usingAnthropic = !!process.env.ANTHROPIC_API_KEY;
 
@@ -203,7 +203,7 @@ Rules:
 - If the request cannot be completed with the available toolsets, return an array describing the unknown tools ["INVALID_TOOL:\${INVALID_TOOL_NAME}"].
 
 Available Tools:
-${getToolMetadata()}
+${getAllToolMetadata()}
 `;
 
 export function getToolConfig(toolName: string): ToolConfig | undefined {

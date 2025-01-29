@@ -43,11 +43,33 @@ export interface CreateActionDataResult {
   nextExecutionTime?: string;
 }
 
+export interface LaunchPumpfunResult {
+  step?:
+    | 'updating'
+    | 'awaiting-confirmation'
+    | 'confirmed'
+    | 'processing'
+    | 'completed'
+    | 'canceled'
+    | 'failed';
+  name?: string;
+  symbol?: string;
+  description?: string;
+  image?: string;
+  initalBuySOL?: number;
+  website?: string;
+  twitter?: string;
+  telegram?: string;
+  signature?: string;
+  mint?: string;
+  metadataUri?: string;
+}
+
 export interface ToolDataStream {
   type: 'stream-result-data';
   status?: 'streaming' | 'idle' | 'completed' | undefined;
   toolCallId: string;
-  content?: SwapDataResult | CreateActionDataResult;
+  content?: SwapDataResult | CreateActionDataResult | LaunchPumpfunResult;
 }
 
 export type DataStreamDelta = ToolDataStream;
