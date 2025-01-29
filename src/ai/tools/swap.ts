@@ -158,8 +158,7 @@ export const swapTokens = (): ToolConfig => {
             },
           });
           if (abortData?.abortController) {
-            abortData.aborted = true;
-            abortData?.abortController.abort();
+            abortData.shouldAbort = true;
           }
         } else {
           streamUpdate({

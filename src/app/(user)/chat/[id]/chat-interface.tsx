@@ -34,6 +34,7 @@ import { TokenCard } from '@/ai/solana/jupiter';
 import { Confirmation } from '@/components/confimation';
 import { FloatingWallet } from '@/components/floating-wallet';
 import Logo from '@/components/logo';
+import CreateActionMessage from '@/components/message/create-action/create-action';
 import { LaunchResult } from '@/components/message/pumpfun-launch/launch-result';
 import { SwapCard } from '@/components/message/swap/swap-card';
 import { ToolResult } from '@/components/message/tool-result';
@@ -63,6 +64,7 @@ const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
   swapTokens: SwapCard,
   searchTokenByName: TokenCard,
   launchPumpFun: LaunchResult,
+  createAction: CreateActionMessage,
 };
 
 // Types
@@ -1136,12 +1138,14 @@ const renderToolInvocation = (
           </div>
         </div>
         <div className="mt-2 sm:px-4">
-          {inProgress && toolStreamState === undefined && (
+          {data === undefined && (
             <div className="mt-px px-3">
               <div className="h-20 animate-pulse rounded-lg bg-muted/40" />
             </div>
           )}
-          <ToolComponent data={data} addToolResult={customAddResult} />
+          {data !== undefined && (
+            <ToolComponent data={data} addToolResult={customAddResult} />
+          )}
         </div>
       </div>
     </div>

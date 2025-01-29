@@ -23,10 +23,10 @@ function SwapDetails({
     <div>
       <h1>Swap Details</h1>
       <p>Is Completed: {isCompleted.toString()}</p>
-      <p>Countdown: {countdown ? countdown.toString() : "N/A"}</p>
+      <p>Countdown: {countdown ? countdown.toString() : 'N/A'}</p>
       <p>
         <span>
-          1 {result.inputToken?.symbol} = {result.price?.toFixed(2) || "??"}{" "}
+          1 {result.inputToken?.symbol} = {result.price?.toFixed(2) || '??'}{' '}
           {result.outputToken?.symbol}
         </span>
       </p>

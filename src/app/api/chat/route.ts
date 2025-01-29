@@ -103,7 +103,10 @@ export async function POST(req: Request) {
       message
     ) {
       if (toolUpdateMessage.toolCallResults?.step !== undefined) {
-        return handleToolUpdateMessage(toolUpdateMessage, message);
+        return handleToolUpdateMessage(toolUpdateMessage, message, {
+          userId,
+          conversationId,
+        });
       }
     }
 
@@ -197,6 +200,8 @@ export async function POST(req: Request) {
                 extraData: {
                   walletAddress: publicKey,
                   askForConfirmation: true,
+                  userId,
+                  conversationId,
                 },
               },
               toolsRequired,

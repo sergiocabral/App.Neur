@@ -19,8 +19,8 @@ export const performLaunch = async ({
   name: string;
   symbol: string;
   description: string;
-  initalBuySOL: number;
   image: string;
+  initalBuySOL?: number;
   website?: string;
   twitter?: string;
   telegram?: string;

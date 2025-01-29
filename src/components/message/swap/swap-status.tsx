@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { ArrowRight, Check } from "lucide-react";
+import { motion } from 'framer-motion';
+import { ArrowRight, Check } from 'lucide-react';
 
-import { SwapDataResult } from "@/types/stream";
-import { motion } from "framer-motion";
+import { SwapDataResult } from '@/types/stream';
 
 interface SwapStatusProps {
   result: SwapDataResult;
@@ -11,7 +11,7 @@ interface SwapStatusProps {
 }
 
 export function SwapStatus({ result, inputAmount }: SwapStatusProps) {
-  const isProcessing = result.step === "processing";
+  const isProcessing = result.step === 'processing';
 
   return (
     <motion.div
@@ -20,22 +20,22 @@ export function SwapStatus({ result, inputAmount }: SwapStatusProps) {
       exit={{ opacity: 0, y: -20 }}
       className="py-8"
     >
-      <div className="flex flex-col items-center text-center space-y-4">
+      <div className="flex flex-col items-center space-y-4 text-center">
         {isProcessing ? <ProcessingAnimation /> : <CompletedAnimation />}
 
         <div className="space-y-1">
           <h3 className="text-lg font-medium">
-            {isProcessing ? "Processing Swap" : "Swap Complete"}
+            {isProcessing ? 'Processing Swap' : 'Swap Complete'}
           </h3>
           <div className="flex items-center justify-center gap-2 text-sm">
             <span className="font-medium">
               {inputAmount} {result.inputToken?.symbol}
             </span>
-            <ArrowRight className="w-4 h-4 text-muted-foreground" />
+            <ArrowRight className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">
               {(
-                (result.price ?? 0) * Number.parseFloat(inputAmount ?? "0")
-              ).toFixed(2)}{" "}
+                (result.price ?? 0) * Number.parseFloat(inputAmount ?? '0')
+              ).toFixed(2)}{' '}
               {result.outputToken?.symbol}
             </span>
           </div>
@@ -48,7 +48,7 @@ export function SwapStatus({ result, inputAmount }: SwapStatusProps) {
 function ProcessingAnimation() {
   return (
     <div className="flex flex-col items-center gap-4">
-      <div className="relative w-16 h-16 flex items-center justify-center">
+      <div className="relative flex h-16 w-16 items-center justify-center">
         <motion.div className="absolute inset-0 rounded-full border-4 border-primary/20" />
         <motion.div
           className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent"
@@ -56,7 +56,7 @@ function ProcessingAnimation() {
           transition={{
             duration: 1,
             repeat: Number.POSITIVE_INFINITY,
-            ease: "linear",
+            ease: 'linear',
           }}
         />
         <svg
@@ -82,13 +82,13 @@ function CompletedAnimation() {
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
       transition={{
-        type: "spring",
+        type: 'spring',
         stiffness: 200,
         damping: 15,
       }}
-      className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center"
+      className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10"
     >
-      <Check className="w-8 h-8 text-primary" />
+      <Check className="h-8 w-8 text-primary" />
     </motion.div>
   );
 }

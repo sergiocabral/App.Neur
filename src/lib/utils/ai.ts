@@ -184,6 +184,10 @@ export function getConfirmationResult(message: Message) {
 async function handleConfirmation(
   dataStream: DataStreamWriter,
   toolUpdateMessage: ToolUpdateMessage,
+  extraData?: {
+    userId: string;
+    conversationId: string;
+  },
   updatedToolResults?: any,
 ) {
   const finalToolResults =
@@ -217,7 +221,11 @@ async function handleConfirmation(
   };
 
   try {
-    const { success, result } = await toolConfirmation(finalToolResults);
+    const { success, result } = await toolConfirmation(
+      finalToolResults,
+      extraData,
+    );
+    console.log('result', result);
     if (success && result) {
       updatedToolCallResults = {
         ...updatedToolCallResults,
@@ -260,6 +268,10 @@ async function handleConfirmation(
 export async function handleToolUpdateMessage(
   toolUpdateMessage: ToolUpdateMessage,
   message: Message,
+  extraData?: {
+    userId: string;
+    conversationId: string;
+  },
 ) {
   if (toolUpdateMessage.toolName === undefined) {
     return;
@@ -275,7 +287,7 @@ export async function handleToolUpdateMessage(
         toolUpdateMessage.isDataCall &&
         toolUpdateMessage.toolCallResults?.step === 'confirmed'
       ) {
-        await handleConfirmation(dataStream, toolUpdateMessage);
+        await handleConfirmation(dataStream, toolUpdateMessage, extraData);
         return;
       }
       // Update the tool call with the data provided by the user
@@ -303,7 +315,7 @@ export async function handleToolUpdateMessage(
           );
           const { experimental_partialOutputStream: partialOutputStream } =
             streamText({
-              model: openai('gpt-4o', { structuredOutputs: true }),
+              model: openai('gpt-4o-mini', { structuredOutputs: true }),
               system: `Update the tool call parameters with the data provided by the user.
               Only set confirm to true if the user explicitly confirms with words such as "confirm" or "yes".
               Only set canceled to true if the user explicitly cancels with words such as "cancel" or "no".

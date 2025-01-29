@@ -2,9 +2,11 @@ import { zodSchema } from '@ai-sdk/ui-utils';
 import { DataStreamWriter } from 'ai';
 import { ZodType, ZodTypeAny, ZodTypeDef } from 'zod';
 
+import { createAction } from './create-action';
 import { launchPumpFun } from './launch-pump';
 import { searchTokenByName } from './search-token';
 import { swapTokens } from './swap';
+import { sendTelegramNotification } from './telegram-notification';
 
 interface ToolMetadata {
   description: string;
@@ -15,7 +17,10 @@ interface ToolMetadata {
 export interface ToolConfig {
   metadata: ToolMetadata;
   buildTool: (props: WrappedToolProps) => any;
-  confirm?: (props: any) => Promise<{ success: boolean; result?: any }>;
+  confirm?: (
+    props: any,
+    extraData?: any,
+  ) => Promise<{ success: boolean; result?: any }>;
 }
 
 export interface WrappedToolProps {
@@ -32,6 +37,8 @@ export const allTools: Record<string, ToolConfig> = {
   swapTokens: swapTokens(),
   searchTokenByName: searchTokenByName(),
   launchPumpFun: launchPumpFun(),
+  createAction: createAction(),
+  sendTelegramNotification: sendTelegramNotification(),
 };
 
 export const wrapTools = (
