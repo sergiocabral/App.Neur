@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown, ArrowRight, ExternalLink, X } from 'lucide-react';
@@ -43,6 +43,23 @@ export function SwapForm({ data, onSwap }: SwapFormProps) {
   const [hasChanges, setHasChanges] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
 
+  const onConfirm = async () => {
+    if (hasChanges) {
+      // Save changes
+      onSwap({
+        ...result,
+        inputAmount: Number.parseFloat(inputAmount) || 0,
+      });
+      setHasChanges(false);
+    } else {
+      // Confirm swap
+      onSwap({
+        ...result,
+        step: 'confirmed',
+      });
+    }
+  };
+
   useEffect(() => {
     if (result?.inputAmount) {
       setInputAmount(result.inputAmount.toString());
@@ -67,25 +84,20 @@ export function SwapForm({ data, onSwap }: SwapFormProps) {
     } else {
       setCountdown(null);
     }
-  }, [step, hasChanges]);
+  }, [step, hasChanges, onConfirm]);
 
-  const swapButtonText = useMemo(() => SWAP_BUTTON_TEXT[step], [step]);
+  const swapButtonText = SWAP_BUTTON_TEXT[step];
 
-  const outputAmount = useMemo(() => {
-    const input = Number.parseFloat(inputAmount ?? '0');
-    return (result?.price ?? 0) * input || '';
-  }, [inputAmount, result?.price]);
+  const outputAmount =
+    (result?.price ?? 0) * Number.parseFloat(inputAmount ?? '0') || '';
 
-  const status = useMemo(
-    () => ({
-      isSearching: step === 'token-search',
-      isProcessing: step === 'processing',
-      isCompleted: step === 'completed',
-      isCanceled: step === 'canceled',
-      showInputs: !['processing', 'completed', 'canceled'].includes(step),
-    }),
-    [step],
-  );
+  const status = {
+    isSearching: step === 'token-search',
+    isProcessing: step === 'processing',
+    isCompleted: step === 'completed',
+    isCanceled: step === 'canceled',
+    showInputs: !['processing', 'completed', 'canceled'].includes(step),
+  };
 
   const tokenBalances = useWalletPortfolio();
 
@@ -101,23 +113,6 @@ export function SwapForm({ data, onSwap }: SwapFormProps) {
   const outputTokenBalance =
     outputTokenData?.balance ??
     0 / Math.pow(10, outputTokenData?.decimals ?? 1);
-
-  const onConfirm = async () => {
-    if (hasChanges) {
-      // Save changes
-      onSwap({
-        ...result,
-        inputAmount: Number.parseFloat(inputAmount) || 0,
-      });
-      setHasChanges(false);
-    } else {
-      // Confirm swap
-      onSwap({
-        ...result,
-        step: 'confirmed',
-      });
-    }
-  };
 
   const handleInputChange = (value: string) => {
     setInputAmount(value);

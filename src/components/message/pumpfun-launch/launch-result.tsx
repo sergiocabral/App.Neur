@@ -59,14 +59,15 @@ function truncate(str: string, length = 4) {
 export function LaunchResult({ data, addToolResult }: LaunchResultProps) {
   const [hasChanges, setHasChanges] = useState(false);
   const [formData, setFormData] = useState(data?.result ?? {});
-  if (!data) return null;
-  const result = data.result;
 
   useEffect(() => {
     if (!hasChanges) {
-      setFormData(result ?? {});
+      setFormData(data?.result ?? {});
     }
-  }, [result, hasChanges]);
+  }, [data?.result, hasChanges]);
+
+  if (!data) return null;
+  const result = data.result;
 
   const handleInputChange = (
     field: keyof LaunchPumpfunResult,
