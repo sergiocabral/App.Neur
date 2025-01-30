@@ -135,7 +135,7 @@ export const launchPumpFun = () => {
 
           const result = await performLaunch({
             ...originalToolCall,
-            image: originalToolCall.image ?? '',
+            image: originalToolCall.image,
             initalBuySOL: originalToolCall.initalBuySOL ?? 0,
           });
           streamUpdate({

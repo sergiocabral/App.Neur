@@ -381,11 +381,11 @@ export async function handleToolUpdateMessage(
         console.log(`${error}`);
       }
 
-      // get only the updated data between toolCallResults and updatedToolCall
-      const deltaUpdate = diffObjects(
-        toolUpdateMessage.toolCallResults,
-        updatedToolCall,
-      );
+      // // get only the updated data between toolCallResults and updatedToolCall
+      // const deltaUpdate = diffObjects(
+      //   toolUpdateMessage.toolCallResults,
+      //   updatedToolCall,
+      // );
       streamUpdate({
         stream: dataStream,
         update: {
@@ -393,7 +393,7 @@ export async function handleToolUpdateMessage(
           status: 'idle',
           toolCallId: toolUpdateMessage.toolCallId!,
           content: {
-            ...deltaUpdate,
+            ...updatedToolCall,
             step:
               updatedToolCall.step === 'canceled'
                 ? 'canceled'

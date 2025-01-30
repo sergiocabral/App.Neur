@@ -14,7 +14,6 @@ import Image from 'next/image';
 import { SavedPrompt } from '@prisma/client';
 import { Attachment, JSONValue, Message } from 'ai';
 import { useChat } from 'ai/react';
-import { extend, get } from 'lodash';
 import {
   Bookmark,
   Image as ImageIcon,
@@ -431,7 +430,11 @@ function ChatMessage({
       <div
         className={cn(
           'group relative flex max-w-[85%] flex-row items-center',
-          isUser ? '' : 'w-full',
+          isUser ||
+            !message.toolInvocations ||
+            message.toolInvocations.length === 0
+            ? ''
+            : 'w-full',
         )}
       >
         {isUser && (
@@ -480,7 +483,12 @@ function ChatMessage({
                   remarkPlugins={[remarkGfm]}
                   components={{
                     a: ({ node, ...props }) => (
-                      <a {...props} target="_blank" rel="noopener noreferrer" />
+                      <a
+                        {...props}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        ref={undefined}
+                      />
                     ),
                     img: ({ node, alt, src, ...props }) => {
                       if (!src) return null;

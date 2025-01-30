@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
 import {
   Tooltip,
@@ -18,28 +17,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-
-interface LaunchPumpfunResult {
-  step?:
-    | 'updating'
-    | 'awaiting-confirmation'
-    | 'confirmed'
-    | 'processing'
-    | 'completed'
-    | 'canceled'
-    | 'failed';
-  name?: string;
-  symbol?: string;
-  description?: string;
-  image?: string;
-  initalBuySOL?: number;
-  website?: string;
-  twitter?: string;
-  telegram?: string;
-  signature?: string;
-  mint?: string;
-  metadataUri?: string;
-}
+import { LaunchPumpfunResult } from '@/types/stream';
 
 interface LaunchResultProps {
   data: {
@@ -79,11 +57,16 @@ export function LaunchResult({ data, addToolResult }: LaunchResultProps) {
 
   const handleConfirm = () => {
     if (hasChanges) {
-      addToolResult({ ...formData, step: 'updating' });
-      setHasChanges(false);
+      addToolResult({
+        ...formData,
+      });
     } else {
+      if (result?.step === 'awaiting-confirmation' && !formData.image?.trim()) {
+        return;
+      }
       addToolResult({ ...result, step: 'confirmed' });
     }
+    setHasChanges(false);
   };
 
   const handleCancel = () => {
@@ -220,10 +203,9 @@ export function LaunchResult({ data, addToolResult }: LaunchResultProps) {
                   onChange={(e) => {
                     const value = e.target.value;
                     if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                      handleInputChange(
-                        'initalBuySOL',
-                        value === '' ? '' : value,
-                      );
+                      const numericValue =
+                        value === '' ? '' : Number.parseFloat(value) || value;
+                      handleInputChange('initalBuySOL', numericValue);
                     }
                   }}
                 />
@@ -231,7 +213,7 @@ export function LaunchResult({ data, addToolResult }: LaunchResultProps) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="image">Image URL</Label>
+              <Label htmlFor="image">Image URL *</Label>
               <Input
                 id="image"
                 value={formData.image || ''}
@@ -296,7 +278,9 @@ export function LaunchResult({ data, addToolResult }: LaunchResultProps) {
                 className="flex-1"
                 onClick={handleConfirm}
                 disabled={
-                  result?.step !== 'awaiting-confirmation' && !hasChanges
+                  result?.step === 'awaiting-confirmation' &&
+                  !hasChanges &&
+                  !formData.image?.trim()
                 }
               >
                 {confirmButtonText}
