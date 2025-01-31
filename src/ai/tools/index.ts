@@ -2,8 +2,14 @@ import { zodSchema } from '@ai-sdk/ui-utils';
 import { DataStreamWriter } from 'ai';
 import { ZodType, ZodTypeAny, ZodTypeDef } from 'zod';
 
+import { allBirdeyeTools } from './birdeye';
+import { allChartTools } from './chart';
 import { createAction } from './create-action';
+import { definedFiTools } from './defined-fi';
+import { allDexscreenerTools } from './dexscreener';
+import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
+import { allMagicEdenTools } from './magic-eden';
 import { searchTokenByName } from './search-token';
 import { swapTokens } from './swap';
 import { sendTelegramNotification } from './telegram-notification';
@@ -39,6 +45,12 @@ export const allTools: Record<string, ToolConfig> = {
   launchPumpFun: launchPumpFun(),
   createAction: createAction(),
   sendTelegramNotification: sendTelegramNotification(),
+  ...allMagicEdenTools,
+  ...allChartTools,
+  ...allDexscreenerTools,
+  ...allBirdeyeTools,
+  ...definedFiTools,
+  ...allJinaTools,
 };
 
 export const wrapTools = (
