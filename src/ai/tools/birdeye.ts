@@ -8,6 +8,7 @@ const getTopTradersTool = () => {
   const metadata = {
     description: 'Get top traders on Solana DEXes given a timeframe',
     parameters: birdeyeTools.getTopTraders.parameters,
+    requiredEnvVars: ['BIRDEYE_API_KEY'],
   };
   const buildTool = (props: WrappedToolProps) =>
     tool({

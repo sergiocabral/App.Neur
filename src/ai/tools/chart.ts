@@ -8,6 +8,7 @@ const priceChartTool = () => {
   const metadata = {
     description: chartTools.priceChartTool.description,
     parameters: chartTools.priceChartTool.parameters,
+    requiredEnvVars: ['CG_API_KEY'],
   };
   const buildTool = (props: WrappedToolProps) =>
     tool({

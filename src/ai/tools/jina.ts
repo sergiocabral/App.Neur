@@ -7,6 +7,7 @@ const readWebPage = () => {
   const metadata = {
     description: jinaTools.readWebPage.description,
     parameters: jinaTools.readWebPage.parameters,
+    requiredEnvVars: ['JINA_API_KEY'],
   };
   const buildTool = (props: WrappedToolProps) =>
     tool({
