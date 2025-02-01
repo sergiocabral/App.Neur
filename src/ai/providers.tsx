@@ -4,6 +4,8 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 
+import { Card } from '@/components/ui/card';
+
 import { actionTools } from './generic/action';
 import { jinaTools } from './generic/jina';
 import { telegramTools } from './generic/telegram';
@@ -27,24 +29,25 @@ export const openai = createOpenAI({
   baseURL: process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
   apiKey: process.env.OPENAI_API_KEY,
   compatibility: 'strict',
-  fetch: async (url, options) => {
-    const body = JSON.parse(options!.body! as string);
+  ...(process.env.OPENAI_BASE_URL?.includes('openrouter.ai') && {
+    fetch: async (url, options) => {
+      if (!options?.body) return fetch(url, options);
 
-    // attach openrouter provider order to body
-    const modifiedBody = {
-      ...body,
-      provider: {
-        order: ['Anthropic', 'OpenAI'],
-        allow_fallbacks: false,
-      },
-    };
+      const body = JSON.parse(options.body as string);
 
-    options!.body = JSON.stringify(modifiedBody);
+      const modifiedBody = {
+        ...body,
+        provider: {
+          order: ['Anthropic', 'OpenAI'],
+          allow_fallbacks: false,
+        },
+      };
 
-    // console.log(options!.body);
+      options.body = JSON.stringify(modifiedBody);
 
-    return await fetch(url, options);
-  },
+      return fetch(url, options);
+    },
+  }),
 });
 
 export const orchestratorModel = openai('gpt-4o-mini');
@@ -59,6 +62,7 @@ Critical Rules:
 - Before deciding to follow up after a tool call, review the results and decide if a follow up is needed.
 - Most tool results are self explanatory and do not require follow up.
 - Do not repeat the output of the tool as the results are already shown to the user.
+- Do not attempt to call a tool that you have not been provided, let the user know that the requested action is not supported.
 
 Scheduled Actions:
 - Scheduled actions are automated tasks that are executed at specific intervals.
@@ -104,9 +108,11 @@ export interface ToolConfig {
 export function DefaultToolResultRenderer({ result }: { result: unknown }) {
   if (result && typeof result === 'object' && 'error' in result) {
     return (
-      <div className="mt-2 pl-3.5 text-sm text-destructive">
-        {String((result as { error: unknown }).error)}
-      </div>
+      <Card className="bg-card p-4">
+        <div className="pl-3.5 text-sm">
+          {String((result as { error: unknown }).error)}
+        </div>
+      </Card>
     );
   }
 

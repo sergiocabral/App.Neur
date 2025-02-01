@@ -1,5 +1,16 @@
 # Changelogs
 
+## v0.3.1
+
+- Fix client-side error when an unknown tool is invoked
+
+## v0.3.0
+
+- Improvements to saved prompts
+- Platform subscription implementation
+- Sharable referral codes
+- Trial feature for token holders
+
 ## v0.2.3
 
 - Platform performance and stability improvements

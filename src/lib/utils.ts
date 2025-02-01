@@ -11,7 +11,11 @@ import {
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
+import { EmbeddedWallet } from '@/types/db';
+import { SOL_MINT } from '@/types/helius/portfolio';
 import { DataStreamDelta } from '@/types/stream';
+
+import { searchWalletAssets } from './solana/helius';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -59,7 +63,12 @@ export const isValidTokenUsage = (usage: LanguageModelUsage) =>
   !isNaN(usage.completionTokens) &&
   !isNaN(usage.totalTokens);
 
-export function formatDate(date: Date) {
+export function formatDate(date: Date | string) {
+  // Ensure `date` is a valid Date object
+  if (typeof date === 'string') {
+    date = new Date(date.replace(' ', 'T')); // Convert to ISO format
+  }
+
   return new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: '2-digit',
@@ -272,3 +281,40 @@ export function isPlainObject(obj: any): boolean {
     Object.prototype.toString.call(obj) === '[object Object]'
   );
 }
+
+export function canAffordSubscription(
+  walletPortfolio?: Awaited<ReturnType<typeof searchWalletAssets>>,
+): boolean {
+  const solBalanceInfo = walletPortfolio?.fungibleTokens?.find(
+    (t) => t.id === SOL_MINT,
+  );
+
+  const balance = solBalanceInfo
+    ? solBalanceInfo.token_info.balance // Keep balance in lamports
+    : undefined;
+
+  const subscriptionPriceLamports = Number(
+    process.env.NEXT_PUBLIC_SUB_LAMPORTS,
+  ); // Subscription price in lamports
+
+  const hasEnoughBalance = balance && balance >= subscriptionPriceLamports;
+
+  return !!hasEnoughBalance;
+}
+
+export function getSubPriceFloat(): number {
+  const lamports = Number(process.env.NEXT_PUBLIC_SUB_LAMPORTS!);
+
+  return lamports / 1_000_000_000;
+}
+
+export function getTrialTokensFloat(): number {
+  const lamports = Number(process.env.NEXT_PUBLIC_TRIAL_LAMPORTS || 0);
+
+  return lamports / 1_000_000_000;
+}
+
+export const IS_SUBSCRIPTION_ENABLED =
+  `${process.env.NEXT_PUBLIC_SUB_ENABLED}` === 'true';
+export const IS_TRIAL_ENABLED =
+  `${process.env.NEXT_PUBLIC_TRIAL_ENABLED}` === 'true';
