@@ -13,6 +13,7 @@ import { allMagicEdenTools } from './magic-eden';
 import { searchTokenByName } from './search-token';
 import { swapTokens } from './swap';
 import { sendTelegramNotification } from './telegram-notification';
+import { transferTokens } from './transfer';
 
 interface ToolMetadata {
   description: string;
@@ -41,6 +42,7 @@ export interface WrappedToolProps {
 
 export const allTools: Record<string, ToolConfig> = {
   swapTokens: swapTokens(),
+  transferTokens: transferTokens(),
   searchTokenByName: searchTokenByName(),
   launchPumpFun: launchPumpFun(),
   createAction: createAction(),

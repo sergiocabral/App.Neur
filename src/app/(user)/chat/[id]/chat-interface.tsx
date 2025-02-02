@@ -37,6 +37,7 @@ import CreateActionMessage from '@/components/message/create-action/create-actio
 import { LaunchResult } from '@/components/message/pumpfun-launch/launch-result';
 import { SwapCard } from '@/components/message/swap/swap-card';
 import { ToolResult } from '@/components/message/tool-result';
+import { TransferCard } from '@/components/message/transfer/transfer-card';
 import { SavedPromptsMenu } from '@/components/saved-prompts-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,7 @@ const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
   searchTokenByName: TokenCard,
   launchPumpFun: LaunchResult,
   createAction: CreateActionMessage,
+  transferTokens: TransferCard,
 };
 
 // Types

@@ -10,8 +10,8 @@ import { Separator } from '@/components/ui/separator';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import type { SwapDataResult } from '@/types/stream';
 
+import { TokenInput } from '../token-input';
 import { SwapStatus } from './swap-status';
-import { TokenInput } from './token-input';
 
 interface SwapFormProps {
   data: {

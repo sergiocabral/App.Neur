@@ -65,11 +65,31 @@ export interface LaunchPumpfunResult {
   metadataUri?: string;
 }
 
+export interface TransferDataResult {
+  step?:
+    | 'token-search'
+    | 'updating'
+    | 'awaiting-confirmation'
+    | 'confirmed'
+    | 'processing'
+    | 'completed'
+    | 'canceled'
+    | 'failed';
+  token?: TokenInfo;
+  amount?: number;
+  receiverAddress?: string;
+  signature?: string;
+}
+
 export interface ToolDataStream {
   type: 'stream-result-data';
   status?: 'streaming' | 'idle' | 'completed' | undefined;
   toolCallId: string;
-  content?: SwapDataResult | CreateActionDataResult | LaunchPumpfunResult;
+  content?:
+    | SwapDataResult
+    | CreateActionDataResult
+    | LaunchPumpfunResult
+    | TransferDataResult;
 }
 
 export type DataStreamDelta = ToolDataStream;
