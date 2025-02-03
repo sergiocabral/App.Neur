@@ -14,6 +14,7 @@ import { birdeyeTools } from './solana/birdeye';
 import { chartTools } from './solana/chart';
 import { definedTools } from './solana/defined-fi';
 import { dexscreenerTools } from './solana/dexscreener';
+import { driftTools } from './solana/drift';
 import { jupiterTools } from './solana/jupiter';
 import { magicEdenTools } from './solana/magic-eden';
 import { pumpfunTools } from './solana/pumpfun';
@@ -138,6 +139,7 @@ export const defaultTools: Record<string, ToolConfig> = {
   ...chartTools,
   ...telegramTools,
   ...birdeyeTools,
+  ...driftTools,
 };
 
 export const coreTools: Record<string, ToolConfig> = {

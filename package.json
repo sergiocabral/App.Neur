@@ -21,6 +21,7 @@
     "@ai-sdk/openai": "^1.1.9",
     "@ai-sdk/ui-utils": "^1.1.8",
     "@bonfida/spl-name-service": "^3.0.8",
+    "@coral-xyz/anchor": "^0.30.1",
     "@mem0/vercel-ai-provider": "^0.0.10",
     "@prisma/client": "^6.3.0",
     "@privy-io/react-auth": "^1.99.1",
@@ -46,9 +47,10 @@
     "@remixicon/react": "^4.6.0",
     "@solana/spl-token": "^0.4.12",
     "@solana/web3.js": "1.98.0",
+    "@triton-one/yellowstone-grpc": "^2.0.0",
     "@vercel/analytics": "^1.4.1",
     "@vercel/speed-insights": "^1.1.0",
-    "ai": "^4.1.16",
+    "ai": "^4.1.17",
     "babel-plugin-react-compiler": "19.0.0-beta-27714ef-20250124",
     "bs58": "^6.0.0",
     "class-variance-authority": "^0.7.1",
@@ -64,7 +66,7 @@
     "moment": "^2.30.1",
     "nanoid": "^5.0.9",
     "next": "15.1.2",
-    "next-safe-action": "^7.10.2",
+    "next-safe-action": "^7.10.3",
     "next-themes": "^0.4.4",
     "node-fetch": "^3.3.2",
     "react": "^19.0.0",
@@ -76,7 +78,7 @@
     "recharts": "^2.15.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
-    "solana-agent-kit": "github:slimeonmyhead/solana-agent-kit#c571e8b59ed7d399a705578af2d58c95f7e9e826",
+    "solana-agent-kit": "github:slimeonmyhead/solana-agent-kit#b8ffc8a05ba68c4323383b7fddd597dbe0868d8f",
     "sonner": "^1.7.4",
     "swr": "^2.3.0",
     "tailwind-merge": "^2.6.0",
@@ -95,6 +97,7 @@
     "@types/node": "^20.17.16",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
+    "copy-webpack-plugin": "^12.0.2",
     "eslint": "^9.19.0",
     "eslint-config-next": "15.1.0",
     "postcss": "^8.5.1",
@@ -104,6 +107,9 @@
     "tailwind-scrollbar": "^3.1.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.7.3"
+  },
+  "resolutions": {
+    "@triton-one/yellowstone-grpc": "^2.0.0"
   },
   "packageManager": "pnpm@9.15.1+sha512.1acb565e6193efbebda772702950469150cf12bcc764262e7587e71d19dc98a423dff9536e57ea44c49bdf790ff694e83c27be5faa23d67e0c033b583be4bfcf"
 }

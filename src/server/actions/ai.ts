@@ -1,8 +1,10 @@
 'use server';
 
 import { PublicKey } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 import { type CoreMessage, type CoreUserMessage, generateText } from 'ai';
-import { BaseWallet, SolanaAgentKit, WalletAdapter } from 'solana-agent-kit';
+import bs58 from 'bs58';
+import { BaseWallet, KeypairWallet, SolanaAgentKit } from 'solana-agent-kit';
 import { z } from 'zod';
 
 import { defaultModel } from '@/ai/providers';
@@ -112,10 +114,12 @@ export const getAgentKit = async ({
     return { success: false, error: 'WALLET_NOT_FOUND' };
   }
 
-  let walletAdapter: WalletAdapter;
+  let walletAdapter: BaseWallet;
   if (wallet.encryptedPrivateKey) {
-    walletAdapter = new BaseWallet(
-      await decryptPrivateKey(wallet?.encryptedPrivateKey),
+    walletAdapter = new KeypairWallet(
+      Keypair.fromSecretKey(
+        bs58.decode(await decryptPrivateKey(wallet.encryptedPrivateKey)),
+      ),
     );
   } else {
     const privyClientResponse = await getPrivyClient();
