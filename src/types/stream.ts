@@ -81,6 +81,22 @@ export interface TransferDataResult {
   signature?: string;
 }
 
+export interface CreateDriftDataResult {
+  step?:
+    | 'updating'
+    | 'awaiting-confirmation'
+    | 'confirmed'
+    | 'processing'
+    | 'completed'
+    | 'canceled'
+    | 'failed';
+  symbol?: string;
+  amount?: number;
+  availableSymbols?: Array<{ symbol: string; mint: string }>;
+  signature?: string;
+  account?: string;
+}
+
 export interface ToolDataStream {
   type: 'stream-result-data';
   status?: 'streaming' | 'idle' | 'completed' | undefined;
@@ -89,7 +105,8 @@ export interface ToolDataStream {
     | SwapDataResult
     | CreateActionDataResult
     | LaunchPumpfunResult
-    | TransferDataResult;
+    | TransferDataResult
+    | CreateDriftDataResult;
 }
 
 export type DataStreamDelta = ToolDataStream;
