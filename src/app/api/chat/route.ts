@@ -345,7 +345,7 @@ async function saveResponses(
 ) {
   try {
     const finalMessages = appendResponseMessages({
-      messages: [{ role: 'user', content: '' }], // empty message to fix error
+      messages: [{ id: '', role: 'user', content: '' }], // empty message to fix error
       responseMessages: responseMessages,
     }).filter(
       (m) =>

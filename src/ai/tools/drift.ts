@@ -70,7 +70,10 @@ const performCreateDriftAccount = async ({
   } catch (error) {
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to launch token',
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to create drift account',
     };
   }
 };
@@ -164,6 +167,7 @@ const createDriftAccount = () => {
             },
           };
         }
+
         const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
         const markets = agent
