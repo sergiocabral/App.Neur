@@ -17,8 +17,6 @@ interface SpotPosition {
   type: string;
 }
 
-type PerpPosition = {};
-
 interface AccountInfoProps {
   name: string;
   accountAddress: string;
@@ -26,7 +24,7 @@ interface AccountInfoProps {
   overallBalance: number;
   settledPerpPnl: string;
   lastActiveSlot: number;
-  perpPositions: PerpPosition[];
+  perpPositions: any[];
   spotPositions: SpotPosition[];
 }
 
