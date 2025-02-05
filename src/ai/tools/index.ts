@@ -11,6 +11,7 @@ import { allDriftTools } from './drift';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
+import { allMetaplexTools } from './metaplex';
 import { searchTokenByName } from './search-token';
 import { swapTokens } from './swap';
 import { sendTelegramNotification } from './telegram-notification';
@@ -55,6 +56,7 @@ export const allTools: Record<string, ToolConfig> = {
   ...definedFiTools,
   ...allJinaTools,
   ...allDriftTools,
+  ...allMetaplexTools,
 };
 
 export const wrapTools = (

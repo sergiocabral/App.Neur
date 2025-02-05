@@ -1,5 +1,6 @@
 import {
   PrivyClient,
+  SolanaSignMessageRpcInputType,
   type SolanaSignTransactionRpcInputType,
 } from '@privy-io/server-auth';
 import { PublicKey, Transaction, VersionedTransaction } from '@solana/web3.js';
@@ -61,6 +62,25 @@ export class PrivyEmbeddedWallet implements BaseWallet {
     } catch (error) {
       throw new Error(
         `Failed to sign transactions: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      );
+    }
+  }
+
+  async signMessage(message: Uint8Array): Promise<Uint8Array> {
+    try {
+      const request: SolanaSignMessageRpcInputType = {
+        address: this.publicKey.toBase58(),
+        chainType: 'solana',
+        method: 'signMessage',
+        params: {
+          message,
+        },
+      };
+      const { data } = await this.privyClient.walletApi.rpc(request);
+      return data.signature as Uint8Array;
+    } catch (error) {
+      throw new Error(
+        `Failed to sign message: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
     }
   }
