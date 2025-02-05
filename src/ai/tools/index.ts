@@ -14,6 +14,7 @@ import { searchTokenByName } from './search-token';
 import { swapTokens } from './swap';
 import { sendTelegramNotification } from './telegram-notification';
 import { transferTokens } from './transfer';
+import { meteoraPosition } from './meteora';
 
 interface ToolMetadata {
   description: string;
@@ -47,6 +48,7 @@ export const allTools: Record<string, ToolConfig> = {
   launchPumpFun: launchPumpFun(),
   createAction: createAction(),
   sendTelegramNotification: sendTelegramNotification(),
+  openMeteoraPosition: meteoraPosition(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,

@@ -34,6 +34,7 @@ import { Confirmation } from '@/components/confimation';
 import { FloatingWallet } from '@/components/floating-wallet';
 import Logo from '@/components/logo';
 import CreateActionMessage from '@/components/message/create-action/create-action';
+import { MeteoraPositionCard } from '@/components/message/meteora/meteora-position-card';
 import { LaunchResult } from '@/components/message/pumpfun-launch/launch-result';
 import { SwapCard } from '@/components/message/swap/swap-card';
 import { ToolResult } from '@/components/message/tool-result';
@@ -67,6 +68,7 @@ const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
   launchPumpFun: LaunchResult,
   createAction: CreateActionMessage,
   transferTokens: TransferCard,
+  openMeteoraPosition: MeteoraPositionCard,
 };
 
 // Types

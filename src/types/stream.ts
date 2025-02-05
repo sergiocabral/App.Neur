@@ -1,3 +1,5 @@
+import { MeteoraPool } from '@/server/actions/meteora';
+
 export interface TokenInfo {
   symbol?: string;
   mint?: string;
@@ -81,6 +83,32 @@ export interface TransferDataResult {
   signature?: string;
 }
 
+export interface MeteoraPositionResult {
+  step?:
+    | 'token-selection'
+    | 'pool-selection'
+    | 'amount-input'
+    | 'awaiting-confirmation'
+    | 'processing'
+    | 'completed'
+    | 'failed';
+  availableTokens?: {
+    symbol: string;
+    mint: string;
+    balance: number;
+    logoURI?: string;
+  }[];
+  selectedToken?: {
+    token?: string | undefined;
+    mint?: string | undefined;
+  };
+  pools?: MeteoraPool[];
+  selectedPool?: MeteoraPool;
+  amount?: number;
+  signature?: string;
+  error?: string;
+}
+
 export interface ToolDataStream {
   type: 'stream-result-data';
   status?: 'streaming' | 'idle' | 'completed' | undefined;
@@ -89,7 +117,8 @@ export interface ToolDataStream {
     | SwapDataResult
     | CreateActionDataResult
     | LaunchPumpfunResult
-    | TransferDataResult;
+    | TransferDataResult
+    | MeteoraPositionResult;
 }
 
 export type DataStreamDelta = ToolDataStream;
