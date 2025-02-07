@@ -30,8 +30,8 @@ const searchForToken = async (query: string) => {
           b.address.toLowerCase() === searchQuery;
         const bExact =
           b.symbol.toLowerCase() === searchQuery ||
-          b.name.toLowerCase() === searchQuery;
-        b.address.toLowerCase() === searchQuery;
+          b.name.toLowerCase() === searchQuery ||
+          b.address.toLowerCase() === searchQuery;
         if (aExact && !bExact) return -1;
         if (!aExact && bExact) return 1;
         return 0;

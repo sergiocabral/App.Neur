@@ -56,7 +56,7 @@ export const swapTokens = (): ToolConfig => {
   const buildTool = ({
     dataStream = undefined,
     abortData,
-    extraData: { askForConfirmation },
+    extraData: { askForConfirmation, agentKit },
   }: WrappedToolProps) =>
     tool({
       ...metadata,
@@ -172,15 +172,18 @@ export const swapTokens = (): ToolConfig => {
             },
           });
 
-          const result = await performSwap({
-            inputAmount,
-            inputToken: {
-              mint: updatedToolCall.inputToken.mint,
+          const result = await performSwap(
+            {
+              inputAmount,
+              inputToken: {
+                mint: updatedToolCall.inputToken.mint,
+              },
+              outputToken: {
+                mint: updatedToolCall.outputToken.mint,
+              },
             },
-            outputToken: {
-              mint: updatedToolCall.outputToken.mint,
-            },
-          });
+            { agentKit },
+          );
           streamUpdate({
             stream: dataStream,
             update: {

@@ -1,5 +1,6 @@
 import { PublicKey } from '@solana/web3.js';
 import { Output, streamText, tool } from 'ai';
+import { SolanaAgentKit } from 'solana-agent-kit';
 import { z } from 'zod';
 
 import { diffObjects, streamUpdate } from '@/lib/utils';
@@ -11,20 +12,25 @@ import { searchTokenByMint, searchTokenByName } from './search-token';
 
 const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
-export const performTransfer = async ({
-  receiverAddress,
-  token,
-  amount,
-}: {
+interface TransferParams {
   receiverAddress: string;
   token: {
     mint: string;
     symbol?: string;
   };
   amount: number;
-}) => {
+}
+
+export const performTransfer = async (
+  { receiverAddress, token, amount }: TransferParams,
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
   try {
-    const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    const agent =
+      extraData.agentKit ??
+      (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
     if (!agent) {
       throw new Error('Failed to retrieve agent');
@@ -87,7 +93,7 @@ export const transferTokens = (): ToolConfig => {
   const buildTool = ({
     dataStream = undefined,
     abortData,
-    extraData: { askForConfirmation },
+    extraData: { askForConfirmation, agentKit },
   }: WrappedToolProps) =>
     tool({
       ...metadata,
@@ -186,13 +192,16 @@ export const transferTokens = (): ToolConfig => {
             },
           });
 
-          const result = await performTransfer({
-            receiverAddress,
-            token: {
-              mint: updatedToolCall.token.mint,
+          const result = await performTransfer(
+            {
+              receiverAddress,
+              token: {
+                mint: updatedToolCall.token.mint,
+              },
+              amount,
             },
-            amount,
-          });
+            { agentKit },
+          );
           streamUpdate({
             stream: dataStream,
             update: {

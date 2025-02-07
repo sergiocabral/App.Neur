@@ -1,4 +1,5 @@
 import { tool } from 'ai';
+import { SolanaAgentKit } from 'solana-agent-kit';
 import { z } from 'zod';
 
 import { streamUpdate } from '@/lib/utils';
@@ -6,16 +7,7 @@ import { retrieveAgentKit } from '@/server/actions/ai';
 
 import { WrappedToolProps } from '.';
 
-export const performLaunch = async ({
-  name,
-  symbol,
-  description,
-  image,
-  initalBuySOL,
-  website,
-  twitter,
-  telegram,
-}: {
+interface LaunchParams {
   name: string;
   symbol: string;
   description: string;
@@ -24,9 +16,27 @@ export const performLaunch = async ({
   website?: string;
   twitter?: string;
   telegram?: string;
-}) => {
+}
+
+export const performLaunch = async (
+  {
+    name,
+    symbol,
+    description,
+    image,
+    initalBuySOL,
+    website,
+    twitter,
+    telegram,
+  }: LaunchParams,
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
   try {
-    const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    const agent =
+      extraData.agentKit ??
+      (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
     if (!agent) {
       return { success: false, error: 'Failed to retrieve agent' };
@@ -84,7 +94,7 @@ export const launchPumpFun = () => {
   const buildTool = ({
     dataStream = undefined,
     abortData,
-    extraData: { askForConfirmation },
+    extraData: { askForConfirmation, agentKit },
   }: WrappedToolProps) =>
     tool({
       ...metadata,
@@ -133,11 +143,14 @@ export const launchPumpFun = () => {
             },
           });
 
-          const result = await performLaunch({
-            ...originalToolCall,
-            image: originalToolCall.image,
-            initalBuySOL: originalToolCall.initalBuySOL ?? 0,
-          });
+          const result = await performLaunch(
+            {
+              ...originalToolCall,
+              image: originalToolCall.image,
+              initalBuySOL: originalToolCall.initalBuySOL ?? 0,
+            },
+            { agentKit },
+          );
           streamUpdate({
             stream: dataStream,
             update: {
