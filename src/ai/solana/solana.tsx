@@ -665,8 +665,8 @@ const swap = {
 };
 
 const token = {
-  holders: {
-    displayName: '💼 Token Holder Stats',
+  getTopHolders: {
+    displayName: '💼 Token Top Holder Stats',
     description: 'Get the token holder stats for a Solana token',
     parameters: z.object({
       mint: publicKeySchema.describe('Token mint address'),
@@ -691,7 +691,6 @@ const token = {
       }
     },
     render: (raw: unknown) => {
-      console.log(raw);
       const result = raw as TokenHoldersResult;
       return <TokenHoldersResult holdersResult={result} />;
     },

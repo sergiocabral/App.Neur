@@ -264,14 +264,12 @@ function MessageToolInvocations({
   toolInvocations,
   addToolResult,
   append,
-  hasContent,
   statesById,
 }: {
   messageId: string;
   toolInvocations: ToolInvocation[];
   addToolResult: (result: ToolResult) => void;
   append: (message: Message) => void;
-  hasContent: boolean;
   statesById: Record<string, StreamingState>;
 }) {
   return (
@@ -284,7 +282,7 @@ function MessageToolInvocations({
               statesById[toolCallId],
               messageId,
               append,
-              hasContent || index > 0,
+              index > 0,
             );
           }
           const toolResult = result as ToolActionResult;
@@ -351,7 +349,7 @@ function MessageToolInvocations({
           const finalDisplayName = displayName || config?.displayName;
 
           const header = (
-            <div className="flex min-w-0 flex-1 items-center gap-2">
+            <div className={cn('flex min-w-0 flex-1 items-center gap-2')}>
               <div
                 className={cn(
                   'h-1.5 w-1.5 rounded-full ring-2',
@@ -378,6 +376,7 @@ function MessageToolInvocations({
                   toolName={toolName}
                   result={result}
                   header={header}
+                  includeTopMargin={index > 0}
                 />
               ) : (
                 <>
@@ -500,11 +499,24 @@ function ChatMessage({
             </div>
           )}
 
+          {message.toolInvocations && (
+            <MessageToolInvocations
+              messageId={getMessageIdFromAnnotations(message)}
+              toolInvocations={message.toolInvocations}
+              addToolResult={addToolResult}
+              append={append}
+              statesById={statesById}
+            />
+          )}
+
           {message.content && (
             <div
               className={cn(
                 'relative flex w-full flex-col gap-2 rounded-2xl px-4 py-3 text-sm shadow-sm',
                 isUser ? 'bg-primary' : 'bg-muted/60',
+                message.toolInvocations && message.toolInvocations.length > 0
+                  ? 'mt-2'
+                  : '',
               )}
             >
               <div
@@ -577,17 +589,6 @@ function ChatMessage({
                 </ReactMarkdown>
               </div>
             </div>
-          )}
-
-          {message.toolInvocations && (
-            <MessageToolInvocations
-              messageId={getMessageIdFromAnnotations(message)}
-              toolInvocations={message.toolInvocations}
-              addToolResult={addToolResult}
-              append={append}
-              hasContent={!!message.content}
-              statesById={statesById}
-            />
           )}
         </div>
       </div>

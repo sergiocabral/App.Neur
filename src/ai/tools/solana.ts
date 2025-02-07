@@ -6,16 +6,16 @@ import { solanaTools } from '../solana/solana';
 
 const getTopHoldersTool = () => {
   const metadata = {
-    description: solanaTools.holders.description,
-    parameters: solanaTools.holders.parameters,
+    description: solanaTools.getTopHolders.description,
+    parameters: solanaTools.getTopHolders.parameters,
   };
   const buildTool = (props: WrappedToolProps) =>
     tool({
       ...metadata,
       execute: async ({
         mint,
-      }: z.infer<typeof solanaTools.holders.parameters>) => {
-        return await solanaTools.holders.execute({ mint });
+      }: z.infer<typeof solanaTools.getTopHolders.parameters>) => {
+        return await solanaTools.getTopHolders.execute({ mint });
       },
     });
 
