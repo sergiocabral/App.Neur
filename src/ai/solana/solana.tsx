@@ -674,7 +674,6 @@ const token = {
     execute: async ({ mint }: TokenParams): Promise<TokenHoldersResult> => {
       try {
         const tokenHolderStats = await getHoldersClassification(mint);
-        console.log('[token.holders] tokenHolderStats', tokenHolderStats);
         return {
           success: true,
           data: {
@@ -692,6 +691,7 @@ const token = {
       }
     },
     render: (raw: unknown) => {
+      console.log(raw);
       const result = raw as TokenHoldersResult;
       return <TokenHoldersResult holdersResult={result} />;
     },
