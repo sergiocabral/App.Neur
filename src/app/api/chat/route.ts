@@ -120,8 +120,6 @@ export async function POST(req: Request) {
       defaultSystemPrompt,
       `History of attachments: ${JSON.stringify(attachments)}`,
       `User Solana wallet public key: ${publicKey}`,
-      `User ID: ${userId}`,
-      `Conversation ID: ${conversationId}`,
       `Degen Mode: ${degenMode}`,
     ].join('\n\n');
 
@@ -358,6 +356,13 @@ async function saveResponses(
     finalMessages.forEach((m, index) => {
       if (m.createdAt) {
         m.createdAt = new Date(m.createdAt.getTime() + index);
+      }
+    });
+
+    // Don't save tool invocations that never finished
+    finalMessages.forEach((m) => {
+      if (m.role === 'assistant' && m.toolInvocations) {
+        m.toolInvocations = m.toolInvocations.filter((t) => t.state !== 'call');
       }
     });
 

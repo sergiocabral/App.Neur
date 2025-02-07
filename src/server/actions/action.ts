@@ -105,6 +105,7 @@ export async function processAction(action: ActionWithUser) {
     const tools = wrapTools(
       {
         extraData: {
+          userId: action.userId,
           walletAddress: activeWallet.publicKey,
           askForConfirmation: false,
           agentKit: agent,
