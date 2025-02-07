@@ -13,11 +13,14 @@ const SOL_MINT = 'So11111111111111111111111111111111111111112';
 
 export const performTransfer = async ({
   receiverAddress,
-  tokenAddress,
+  token,
   amount,
 }: {
   receiverAddress: string;
-  tokenAddress: string;
+  token: {
+    mint: string;
+    symbol?: string;
+  };
   amount: number;
 }) => {
   try {
@@ -30,7 +33,7 @@ export const performTransfer = async ({
     const signature = await agent.transfer(
       new PublicKey(receiverAddress),
       amount,
-      tokenAddress !== SOL_MINT ? new PublicKey(tokenAddress) : undefined,
+      token.mint !== SOL_MINT ? new PublicKey(token.mint) : undefined,
     );
 
     return {
@@ -117,7 +120,7 @@ export const transferTokens = (): ToolConfig => {
                   `,
               maxSteps: 6,
               tools: {
-                searchTokenByMint: searchTokenByMint(),
+                searchTokenByMint: searchTokenByMint().buildTool({}),
                 searchTokenByName: searchTokenByName().buildTool({}),
               },
               experimental_output: Output.object({
@@ -185,7 +188,9 @@ export const transferTokens = (): ToolConfig => {
 
           const result = await performTransfer({
             receiverAddress,
-            tokenAddress: updatedToolCall.token.mint,
+            token: {
+              mint: updatedToolCall.token.mint,
+            },
             amount,
           });
           streamUpdate({

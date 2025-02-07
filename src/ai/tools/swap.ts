@@ -95,9 +95,9 @@ export const swapTokens = (): ToolConfig => {
                   `,
               maxSteps: 6,
               tools: {
-                searchTokenByMint: searchTokenByMint(),
+                searchTokenByMint: searchTokenByMint().buildTool({}),
                 searchTokenByName: searchTokenByName().buildTool({}),
-                getSwapRatio: getSwapRatio(),
+                getSwapRatio: getSwapRatio().buildTool({}),
               },
               experimental_output: Output.object({
                 schema: z.object({

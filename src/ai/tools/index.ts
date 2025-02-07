@@ -10,9 +10,10 @@ import { allDexscreenerTools } from './dexscreener';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
-import { searchTokenByName } from './search-token';
+import { allSearchTokenTools, searchTokenByName } from './search-token';
+import { allSolanaTools } from './solana';
 import { swapTokens } from './swap';
-import { sendTelegramNotification } from './telegram-notification';
+import { allTelegramTools, sendTelegramNotification } from './telegram';
 import { transferTokens } from './transfer';
 
 interface ToolMetadata {
@@ -43,16 +44,17 @@ export interface WrappedToolProps {
 export const allTools: Record<string, ToolConfig> = {
   swapTokens: swapTokens(),
   transferTokens: transferTokens(),
-  searchTokenByName: searchTokenByName(),
   launchPumpFun: launchPumpFun(),
   createAction: createAction(),
-  sendTelegramNotification: sendTelegramNotification(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,
   ...allBirdeyeTools,
   ...definedFiTools,
   ...allJinaTools,
+  ...allTelegramTools,
+  ...allSolanaTools,
+  ...allSearchTokenTools,
 };
 
 export const wrapTools = (
