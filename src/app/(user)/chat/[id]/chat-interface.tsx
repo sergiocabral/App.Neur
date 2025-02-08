@@ -12,10 +12,12 @@ import {
 import Image from 'next/image';
 
 import { SavedPrompt } from '@prisma/client';
+import * as Collapsible from '@radix-ui/react-collapsible';
 import { Attachment, JSONValue, Message } from 'ai';
 import { useChat } from 'ai/react';
 import {
   Bookmark,
+  ChevronDown,
   Image as ImageIcon,
   Loader2,
   SendHorizontal,
@@ -61,12 +63,33 @@ import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { ConversationInput } from '../../home/conversation-input';
 
-const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
-  swapTokens: SwapCard,
-  searchTokenByName: TokenCard,
-  launchPumpFun: LaunchResult,
-  createAction: CreateActionMessage,
-  transferTokens: TransferCard,
+const TOOL_COMPONENTS: Record<
+  string,
+  {
+    component: React.FC<any>;
+    displayName: string;
+  }
+> = {
+  swapTokens: {
+    component: SwapCard,
+    displayName: '🔄 Swap Tokens',
+  },
+  searchTokenByName: {
+    component: TokenCard,
+    displayName: '🔍 Search Token',
+  },
+  launchPumpFun: {
+    component: LaunchResult,
+    displayName: '💊 Deploy new token',
+  },
+  createAction: {
+    component: CreateActionMessage,
+    displayName: '⚡️ Create Action',
+  },
+  transferTokens: {
+    component: TransferCard,
+    displayName: '➡️ Transfer Tokens',
+  },
 };
 
 // Types
@@ -277,12 +300,22 @@ function MessageToolInvocations({
       {toolInvocations.map(
         ({ toolCallId, toolName, displayName, result, state, args }, index) => {
           if (toolName in TOOL_COMPONENTS) {
-            return renderToolInvocation(
-              { toolCallId, toolName, displayName, result, state, args },
-              statesById[toolCallId],
-              messageId,
-              append,
-              index > 0,
+            return (
+              <ToolInvocationComponent
+                key={toolCallId}
+                toolInvocation={{
+                  toolCallId,
+                  toolName,
+                  displayName,
+                  result,
+                  state,
+                  args,
+                }}
+                toolStreamState={statesById[toolCallId]}
+                messageId={messageId}
+                append={append}
+                includeTopMargin={index > 0}
+              />
             );
           }
           const toolResult = result as ToolActionResult;
@@ -863,17 +896,25 @@ export default function ChatInterface({
   );
 }
 
-const renderToolInvocation = (
-  toolInvocation: ToolInvocation,
-  toolStreamState: StreamingState | undefined,
-  messageId: string,
-  append: (message: Message) => void,
-  includeTopMargin: boolean,
-) => {
+const ToolInvocationComponent = ({
+  toolInvocation,
+  toolStreamState,
+  messageId,
+  append,
+  includeTopMargin,
+}: {
+  toolInvocation: ToolInvocation;
+  toolStreamState: StreamingState | undefined;
+  messageId: string;
+  append: (message: Message) => void;
+  includeTopMargin: boolean;
+}) => {
+  const [isOpen, setIsOpen] = useState(true);
   if (!(toolInvocation.toolName in TOOL_COMPONENTS)) {
     return null;
   }
-  const ToolComponent = TOOL_COMPONENTS[toolInvocation.toolName];
+  const { component: ToolComponent, displayName } =
+    TOOL_COMPONENTS[toolInvocation.toolName];
 
   const customAddResult = async (result: DataStreamDelta) => {
     append({
@@ -929,38 +970,51 @@ const renderToolInvocation = (
           inProgress ? '' : 'w-full',
         )}
       >
-        <div
-          className={
-            inProgress ? '' : 'w-full rounded-lg bg-muted/40 px-3 py-2'
-          }
+        <Collapsible.Root
+          open={isOpen}
+          onOpenChange={setIsOpen}
+          className={cn('w-full', includeTopMargin && 'mt-2')}
         >
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div
-              className={cn(
-                'h-1.5 w-1.5 rounded-full ring-2',
-                inProgress
-                  ? 'animate-pulse bg-amber-500 ring-amber-500/20'
-                  : 'bg-emerald-500 ring-emerald-500/20',
-              )}
-            />
-            <span className="truncate text-xs font-medium text-foreground/90">
-              {toolInvocation.toolName}
-            </span>
-            <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">
-              {toolInvocation.toolCallId.slice(0, 9)}
-            </span>
-          </div>
-        </div>
-        <div className="mt-2 sm:px-4">
-          {data === undefined && (
-            <div className="mt-px px-3">
-              <div className="h-20 animate-pulse rounded-lg bg-muted/40" />
+          <Collapsible.Trigger asChild className="w-full">
+            <div className="w-full cursor-pointer rounded-lg bg-muted/40 px-3 py-2 transition-colors hover:bg-muted/60">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <div
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full ring-2',
+                    inProgress
+                      ? 'animate-pulse bg-amber-500 ring-amber-500/20'
+                      : 'bg-emerald-500 ring-emerald-500/20',
+                  )}
+                />
+                <span className="flex-grow truncate text-xs font-medium text-foreground/90">
+                  {displayName}
+                </span>
+                <span className="ml-auto font-mono text-[10px] text-muted-foreground/70">
+                  {toolInvocation.toolCallId.slice(0, 9)}
+                </span>
+                <ChevronDown
+                  className={cn(
+                    'ml-auto h-4 w-4 shrink-0 transition-transform duration-200',
+                    isOpen && 'rotate-180 transform',
+                  )}
+                />
+              </div>
             </div>
-          )}
-          {data !== undefined && (
-            <ToolComponent data={data} addToolResult={customAddResult} />
-          )}
-        </div>
+          </Collapsible.Trigger>
+
+          <Collapsible.Content>
+            <div className="mt-2 sm:px-4">
+              {data === undefined && (
+                <div className="mt-px px-3">
+                  <div className="h-20 animate-pulse rounded-lg bg-muted/40" />
+                </div>
+              )}
+              {data !== undefined && (
+                <ToolComponent data={data} addToolResult={customAddResult} />
+              )}
+            </div>
+          </Collapsible.Content>
+        </Collapsible.Root>
       </div>
     </div>
   );
