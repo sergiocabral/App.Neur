@@ -17,14 +17,13 @@ interface MeteoraPositionCardProps {
     success: boolean;
     result: MeteoraPositionResult;
   };
-  addToolResult: (result: DataStreamDelta) => void;
+  addToolResult: (result: MeteoraPositionResult) => void;
   toolCallId: string;
 }
 
 export function MeteoraPositionCard({
   data,
-  addToolResult,
-  toolCallId,
+  addToolResult
 }: MeteoraPositionCardProps) {
   const { result } = data;
   console.log(result);
@@ -40,16 +39,14 @@ export function MeteoraPositionCard({
     try {
       setIsLoading(true);
       await addToolResult({
-        type: 'stream-result-data',
-        status: 'streaming',
-        toolCallId,
-        content: {
-          step: 'pool-selection',
-          selectedToken: {
-            symbol: token.symbol,
-            mint: token.mint,
-          },
+        ...result,
+        selectedToken: {
+          symbol: token.symbol,
+          mint: token.mint,
+          balance: token.balance,
+          logoURI: token.logoURI,
         },
+        step: 'token-selection',
       });
     } finally {
       setIsLoading(false);
@@ -58,42 +55,24 @@ export function MeteoraPositionCard({
 
   const handlePoolSelect = async (pool: MeteoraPool) => {
     await addToolResult({
-      type: 'stream-result-data',
-      status: 'streaming',
-      toolCallId,
-      content: {
-        step: 'amount-input',
-        selectedToken: result?.selectedToken,
-        selectedPool: pool,
-      },
+      ...result,
+      selectedPool: pool,
+      step: 'pool-selection',
     });
   };
 
   const handleAmountSubmit = async () => {
     await addToolResult({
-      type: 'stream-result-data',
-      status: 'streaming',
-      toolCallId,
-      content: {
-        step: 'awaiting-confirmation',
-        selectedToken: result?.selectedToken,
-        selectedPool: result?.selectedPool,
-        amount: parseFloat(amount),
-      },
+      ...result,
+      amount: parseFloat(amount),
+      step: 'amount-input'
     });
   };
 
   const handleConfirmation = async () => {
     await addToolResult({
-      type: 'stream-result-data',
-      status: 'streaming',
-      toolCallId,
-      content: {
-        step: 'processing',
-        selectedToken: result?.selectedToken,
-        selectedPool: result?.selectedPool,
-        amount: result?.amount,
-      },
+      ...result,
+      step: 'awaiting-confirmation',
     });
   };
 
@@ -138,7 +117,7 @@ export function MeteoraPositionCard({
           </div>
         )}
         {/* Pool Selection Step */}
-        {/* {result?.step === 'pool-selection' && result?.pools && (
+        {/*{result?.step === 'pool-selection' && result?.pools && (
           <div className="space-y-3">
             <div className="text-sm text-muted-foreground">Select Pool</div>
             {result.pools.map((pool) => (
@@ -156,9 +135,9 @@ export function MeteoraPositionCard({
               </div>
             ))}
           </div>
-        )} */}
-        {/* Amount Input Step */}
-        {/* {result?.step === 'amount-input' && result?.selectedToken && (
+        )}*/}
+
+        {result?.step === 'amount-input' && result?.selectedToken && (
           <div className="space-y-4">
             <div>
               <div className="text-sm text-muted-foreground">Amount</div>
@@ -179,9 +158,9 @@ export function MeteoraPositionCard({
               Continue
             </Button>
           </div>
-        )} */}
+        )}
         {/* Confirmation Step */}
-        {/* {result?.step === 'awaiting-confirmation' && (
+        {result?.step === 'awaiting-confirmation' && (
           <div className="space-y-4">
             <div className="rounded-lg border p-4">
               <h3 className="mb-4 font-medium">Position Details</h3>
@@ -205,18 +184,18 @@ export function MeteoraPositionCard({
               </div>
             </div>
           </div>
-        )} */}
+        )}
         {/* Processing State */}
-        {/* {result?.step === 'processing' && (
+        {result?.step === 'processing-tnx' && (
           <div className="flex items-center justify-center gap-2 py-4">
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm text-muted-foreground">
               Processing transaction...
             </span>
           </div>
-        )} */}
+        )}
         {/* Completed State */}
-        {/* {result?.step === 'completed' && result?.signature && (
+        {result?.step === 'completed' && result?.signature && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm text-emerald-600">
               <CheckCircle2 className="h-4 w-4" />
@@ -231,20 +210,20 @@ export function MeteoraPositionCard({
               View transaction
             </a>
           </div>
-        )} */}
+        )}
         {/* Failed State */}
-        {/* {result?.step === 'failed' && (
+        {result?.step === 'failed' && (
           <div className="flex items-center gap-2 text-sm text-destructive">
             <XCircle className="h-4 w-4" />
             <span>
               {result.error || 'Failed to open position. Please try again.'}
             </span>
           </div>
-        )} */}
+        )}
       </CardContent>
 
       {/* Confirmation Footer */}
-      {/* {result?.step === 'awaiting-confirmation' && (
+      {result?.step === 'awaiting-confirmation' && (
         <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
           <Button onClick={handleConfirmation} variant="default">
             Confirm Position
@@ -253,7 +232,7 @@ export function MeteoraPositionCard({
             Ready to open position
           </div>
         </CardFooter>
-      )} */}
+      )}
     </Card>
   );
 }

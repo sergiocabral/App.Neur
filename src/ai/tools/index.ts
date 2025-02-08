@@ -48,7 +48,7 @@ export const allTools: Record<string, ToolConfig> = {
   launchPumpFun: launchPumpFun(),
   createAction: createAction(),
   sendTelegramNotification: sendTelegramNotification(),
-  openMeteoraPosition: meteoraPosition(),
+  openMeteoraLiquidityPosition: meteoraPosition(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,

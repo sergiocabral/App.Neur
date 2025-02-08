@@ -68,7 +68,7 @@ const TOOL_COMPONENTS: Record<string, React.FC<any>> = {
   launchPumpFun: LaunchResult,
   createAction: CreateActionMessage,
   transferTokens: TransferCard,
-  openMeteoraPosition: MeteoraPositionCard,
+  openMeteoraLiquidityPosition: MeteoraPositionCard,
 };
 
 // Types

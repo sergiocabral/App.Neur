@@ -83,25 +83,24 @@ export interface TransferDataResult {
   signature?: string;
 }
 
+export interface Token {
+  symbol: string;
+  mint: string;
+  balance: number;
+  logoURI?: string;
+}
+
 export interface MeteoraPositionResult {
   step?:
     | 'token-selection'
     | 'pool-selection'
     | 'amount-input'
     | 'awaiting-confirmation'
-    | 'processing'
+    | 'processing-tnx'
     | 'completed'
     | 'failed';
-  availableTokens?: {
-    symbol: string;
-    mint: string;
-    balance: number;
-    logoURI?: string;
-  }[];
-  selectedToken?: {
-    token?: string | undefined;
-    mint?: string | undefined;
-  };
+  availableTokens?: Token[];
+  selectedToken?: Token;
   pools?: MeteoraPool[];
   selectedPool?: MeteoraPool;
   amount?: number;

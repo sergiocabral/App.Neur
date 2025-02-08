@@ -87,11 +87,7 @@ export const openMeteoraPosition = async ({
         },
       });
 
-    const signature = await sendAndConfirmTransaction(
-      connection,
-      createPositionTx,
-      [agent.wallet],
-    );
+    const signature = await agent.wallet.signTransaction(createPositionTx);
 
     return {
       success: true,
