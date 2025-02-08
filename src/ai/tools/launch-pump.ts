@@ -128,9 +128,6 @@ export const launchPumpFun = () => {
               },
             },
           });
-          if (abortData?.abortController) {
-            abortData.shouldAbort = true;
-          }
         } else {
           streamUpdate({
             stream: dataStream,
@@ -166,6 +163,7 @@ export const launchPumpFun = () => {
           });
           return {
             success: true,
+            noFollowUp: true,
             result: {
               step: result.success ? 'completed' : 'failed',
               ...originalToolCall,
@@ -177,6 +175,7 @@ export const launchPumpFun = () => {
         }
         return {
           success: true,
+          noFollowUp: true,
           result: {
             step: 'awaiting-confirmation',
             ...originalToolCall,

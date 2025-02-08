@@ -86,6 +86,7 @@ interface TokenParams {
 
 interface TokenHoldersResult {
   success: boolean;
+  noFollowUp?: boolean;
   data?: {
     totalHolders: number;
     topHolders: Holder[];
@@ -676,6 +677,7 @@ const token = {
         const tokenHolderStats = await getHoldersClassification(mint);
         return {
           success: true,
+          noFollowUp: true,
           data: {
             totalHolders: tokenHolderStats.totalHolders,
             topHolders: tokenHolderStats.topHolders,

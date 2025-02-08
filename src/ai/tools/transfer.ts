@@ -177,9 +177,6 @@ export const transferTokens = (): ToolConfig => {
               },
             },
           });
-          if (abortData?.abortController) {
-            abortData.shouldAbort = true;
-          }
         } else {
           streamUpdate({
             stream: dataStream,
@@ -215,6 +212,7 @@ export const transferTokens = (): ToolConfig => {
           });
           return {
             success: true,
+            noFollowUp: true,
             result: {
               step: result.success ? 'completed' : 'failed',
               ...updatedToolCall,
@@ -225,6 +223,7 @@ export const transferTokens = (): ToolConfig => {
 
         return {
           success: true,
+          noFollowUp: true,
           result: {
             step: 'awaiting-confirmation',
             ...updatedToolCall,

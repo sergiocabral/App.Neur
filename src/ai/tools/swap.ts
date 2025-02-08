@@ -157,9 +157,6 @@ export const swapTokens = (): ToolConfig => {
               },
             },
           });
-          if (abortData?.abortController) {
-            abortData.shouldAbort = true;
-          }
         } else {
           streamUpdate({
             stream: dataStream,
@@ -197,6 +194,7 @@ export const swapTokens = (): ToolConfig => {
           });
           return {
             success: true,
+            noFollowUp: true,
             result: {
               step: result.success ? 'completed' : 'failed',
               inputAmount,
@@ -208,6 +206,7 @@ export const swapTokens = (): ToolConfig => {
 
         return {
           success: true,
+          noFollowUp: true,
           result: {
             step: 'awaiting-confirmation',
             inputAmount,

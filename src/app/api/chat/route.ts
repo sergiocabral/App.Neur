@@ -16,7 +16,11 @@ import { z } from 'zod';
 import { defaultModel, defaultSystemPrompt } from '@/ai/providers';
 import { wrapTools } from '@/ai/tools';
 import { MAX_TOKEN_MESSAGES } from '@/lib/constants';
-import { isValidTokenUsage, logWithTiming } from '@/lib/utils';
+import {
+  isValidTokenUsage,
+  logWithTiming,
+  shouldHideAssistantMessage,
+} from '@/lib/utils';
 import {
   ResponseMessage,
   getToolUpdateMessage,
@@ -357,12 +361,11 @@ async function saveResponses(
       if (m.createdAt) {
         m.createdAt = new Date(m.createdAt.getTime() + index);
       }
-    });
-
-    // Don't save tool invocations that never finished
-    finalMessages.forEach((m) => {
       if (m.role === 'assistant' && m.toolInvocations) {
         m.toolInvocations = m.toolInvocations.filter((t) => t.state !== 'call');
+        if (shouldHideAssistantMessage(m)) {
+          m.content = '';
+        }
       }
     });
 

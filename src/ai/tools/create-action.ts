@@ -232,12 +232,9 @@ export const createAction = () => {
         });
 
         if (askForConfirmation || updatedToolCall.missingTools.length > 0) {
-          if (abortData?.abortController) {
-            abortData.shouldAbort = true;
-          }
-
           return {
             success: true,
+            noFollowUp: true,
             result: {
               ...updatedToolCall,
               step: 'awaiting-confirmation',

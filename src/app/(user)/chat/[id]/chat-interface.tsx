@@ -50,7 +50,7 @@ import { useUser } from '@/hooks/use-user';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import { EVENTS } from '@/lib/events';
 import { uploadImage } from '@/lib/upload';
-import { cn } from '@/lib/utils';
+import { cn, shouldHideAssistantMessage } from '@/lib/utils';
 import { getMessageIdFromAnnotations } from '@/lib/utils/ai';
 import { generateUUID } from '@/lib/utils/format';
 import {
@@ -478,6 +478,8 @@ function ChatMessage({
     (_, alt, src, width, height) => `![${alt}](${src}#size=${width}x${height})`,
   );
 
+  const shouldHideFollowUp = shouldHideAssistantMessage(message);
+
   return (
     <div
       className={cn(
@@ -542,7 +544,7 @@ function ChatMessage({
             />
           )}
 
-          {message.content && (
+          {message.content && !shouldHideFollowUp && (
             <div
               className={cn(
                 'relative flex w-full flex-col gap-2 rounded-2xl px-4 py-3 text-sm shadow-sm',
