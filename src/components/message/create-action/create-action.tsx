@@ -270,6 +270,8 @@ export default function CreateActionMessage({
         return <Check className="h-5 w-5 text-green-500" />;
       case 'failed':
         return <XCircle className="h-5 w-5 text-red-500" />;
+      case 'canceled':
+        return <XCircle className="h-5 w-5 text-destructive" />;
       default:
         return null;
     }
@@ -291,6 +293,8 @@ export default function CreateActionMessage({
         return 'Action completed successfully!';
       case 'failed':
         return 'Action failed to complete.';
+      case 'canceled':
+        return 'Action canceled.';
       default:
         return 'Initializing...';
     }
@@ -310,6 +314,8 @@ export default function CreateActionMessage({
         return 'bg-green-500/10';
       case 'failed':
         return 'bg-red-500/10';
+      case 'canceled':
+        return 'bg-destructive/10';
       default:
         return 'bg-gray-500/10';
     }
@@ -334,7 +340,7 @@ export default function CreateActionMessage({
 
   if (result?.step === 'completed') {
     return (
-      <Card className="w-full">
+      <Card className="w-full overflow-hidden">
         <CardHeader className="border-b bg-muted">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
@@ -441,8 +447,28 @@ export default function CreateActionMessage({
     );
   }
 
+  if (result?.step === 'canceled') {
+    return (
+      <Card className="w-full overflow-hidden">
+        <CardContent className="grid gap-6 p-6">
+          <div className="py-8">
+            <div className="flex flex-col items-center space-y-4 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
+                <XCircle className="h-8 w-8 text-destructive" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-medium">Action Canceled</h3>
+                <p className="text-sm text-muted-foreground">{message}</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
-    <Card className="w-full">
+    <Card className="w-full overflow-hidden">
       <CardHeader
         className={`${getStatusColor()} transition-colors duration-200`}
       >

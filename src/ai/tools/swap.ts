@@ -56,7 +56,7 @@ export const swapTokens = (): ToolConfig => {
   const buildTool = ({
     dataStream = undefined,
     abortData,
-    extraData: { askForConfirmation },
+    extraData: { askForConfirmation, agentKit },
   }: WrappedToolProps) =>
     tool({
       ...metadata,
@@ -95,9 +95,9 @@ export const swapTokens = (): ToolConfig => {
                   `,
               maxSteps: 6,
               tools: {
-                searchTokenByMint: searchTokenByMint(),
+                searchTokenByMint: searchTokenByMint().buildTool({}),
                 searchTokenByName: searchTokenByName().buildTool({}),
-                getSwapRatio: getSwapRatio(),
+                getSwapRatio: getSwapRatio().buildTool({}),
               },
               experimental_output: Output.object({
                 schema: z.object({
@@ -157,9 +157,6 @@ export const swapTokens = (): ToolConfig => {
               },
             },
           });
-          if (abortData?.abortController) {
-            abortData.shouldAbort = true;
-          }
         } else {
           streamUpdate({
             stream: dataStream,
@@ -172,15 +169,18 @@ export const swapTokens = (): ToolConfig => {
             },
           });
 
-          const result = await performSwap({
-            inputAmount,
-            inputToken: {
-              mint: updatedToolCall.inputToken.mint,
+          const result = await performSwap(
+            {
+              inputAmount,
+              inputToken: {
+                mint: updatedToolCall.inputToken.mint,
+              },
+              outputToken: {
+                mint: updatedToolCall.outputToken.mint,
+              },
             },
-            outputToken: {
-              mint: updatedToolCall.outputToken.mint,
-            },
-          });
+            { agentKit },
+          );
           streamUpdate({
             stream: dataStream,
             update: {
@@ -194,6 +194,7 @@ export const swapTokens = (): ToolConfig => {
           });
           return {
             success: true,
+            noFollowUp: true,
             result: {
               step: result.success ? 'completed' : 'failed',
               inputAmount,
@@ -205,6 +206,7 @@ export const swapTokens = (): ToolConfig => {
 
         return {
           success: true,
+          noFollowUp: true,
           result: {
             step: 'awaiting-confirmation',
             inputAmount,

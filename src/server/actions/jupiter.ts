@@ -19,38 +19,44 @@ const jupiterTokenSchema = z.object({
 const jupiterTokensSchema = z.array(jupiterTokenSchema);
 
 // Cache the fetch for 5 minutes
-export const getJupiterTokens = cache(async (): Promise<JupiterToken[]> => {
-  try {
-    const response = await fetch('https://tokens.jup.ag/tokens?tags=verified', {
-      next: {
-        revalidate: 300, // Cache for 5 minutes
-      },
-    });
+export const getJupiterTokens = cache(
+  async (onlyVerified = true): Promise<JupiterToken[]> => {
+    try {
+      const response = await fetch(
+        `https://tokens.jup.ag/tokens?tags=${onlyVerified ? 'verified' : ''}`,
+        {
+          next: {
+            revalidate: 300, // Cache for 5 minutes
+          },
+        },
+      );
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch Jupiter tokens');
+      if (!response.ok) {
+        throw new Error('Failed to fetch Jupiter tokens');
+      }
+
+      const data = await response.json();
+      const parsed = jupiterTokensSchema.parse(data);
+
+      // Only return the fields we need
+      return parsed.map((token) => ({
+        address: token.address,
+        name: token.name,
+        symbol: token.symbol,
+        logoURI: token.logoURI,
+      }));
+    } catch (error) {
+      console.error('Error fetching Jupiter tokens:', error);
+      return [];
     }
-
-    const data = await response.json();
-    const parsed = jupiterTokensSchema.parse(data);
-
-    // Only return the fields we need
-    return parsed.map((token) => ({
-      address: token.address,
-      name: token.name,
-      symbol: token.symbol,
-      logoURI: token.logoURI,
-    }));
-  } catch (error) {
-    console.error('Error fetching Jupiter tokens:', error);
-    return [];
-  }
-});
+  },
+);
 
 export const searchJupiterTokens = async (
   query: string,
+  onlyVerified = true,
 ): Promise<JupiterToken[]> => {
-  const tokens = await getJupiterTokens();
+  const tokens = await getJupiterTokens(onlyVerified);
   if (!query) return tokens;
 
   const searchTerm = query.toLowerCase();

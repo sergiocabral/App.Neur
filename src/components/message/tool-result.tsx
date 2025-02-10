@@ -12,9 +12,15 @@ interface ToolResultProps {
   toolName: string;
   result: unknown;
   header: React.ReactNode;
+  includeTopMargin?: boolean;
 }
 
-export function ToolResult({ toolName, result, header }: ToolResultProps) {
+export function ToolResult({
+  toolName,
+  result,
+  header,
+  includeTopMargin,
+}: ToolResultProps) {
   const config = getToolConfig(toolName);
   const isCollapsible = config?.isCollapsible === true;
   const [isOpen, setIsOpen] = useState(
@@ -42,7 +48,7 @@ export function ToolResult({ toolName, result, header }: ToolResultProps) {
 
   if (!isCollapsible) {
     return (
-      <div className="mt-2 w-full">
+      <div className={cn('w-full', includeTopMargin && 'mt-2')}>
         <div className="w-full rounded-lg bg-muted/40 px-3 py-2">
           {headerContent}
         </div>
@@ -55,7 +61,7 @@ export function ToolResult({ toolName, result, header }: ToolResultProps) {
     <Collapsible.Root
       open={isOpen}
       onOpenChange={setIsOpen}
-      className="mt-2 w-full"
+      className={cn('w-full', includeTopMargin && 'mt-2')}
     >
       <Collapsible.Trigger className="w-full">
         <div className="w-full cursor-pointer rounded-lg bg-muted/40 px-3 py-2 transition-colors hover:bg-muted/60">

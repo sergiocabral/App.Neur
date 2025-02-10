@@ -1,12 +1,9 @@
 import { PublicKey } from '@solana/web3.js';
+import { SolanaAgentKit } from 'solana-agent-kit';
 
 import { retrieveAgentKit } from './ai';
 
-export const performSwap = async ({
-  inputAmount,
-  inputToken,
-  outputToken,
-}: {
+interface SwapParams {
   inputAmount: number;
   inputToken: {
     mint: string;
@@ -14,10 +11,18 @@ export const performSwap = async ({
   outputToken: {
     mint: string;
   };
-}) => {
-  const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
+}
+
+export const performSwap = async (
+  { inputAmount, inputToken, outputToken }: SwapParams,
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
   if (!agent) {
-    console.error('Agent not found');
     return {
       success: false,
       error: 'Agent not found',
