@@ -67,7 +67,7 @@ export function TokenTransferDialog({
     useState<TransactionResult | null>(null);
 
   const selectedTokenData = tokens.find(
-    (token) => token.content.metadata.symbol === selectedToken,
+    (token) => token.id === selectedToken,
   );
 
   const handleSubmit = async () => {
@@ -228,12 +228,12 @@ export function TokenTransferDialog({
                     className="flex items-center space-x-4 space-y-4 first:mt-0"
                   >
                     <RadioGroupItem
-                      value={token.content.metadata.symbol}
-                      id={token.content.metadata.symbol}
+                      value={token.id}
+                      id={token.id}
                       className="peer"
                     />
                     <Label
-                      htmlFor={token.content.metadata.symbol}
+                      htmlFor={token.id}
                       className="flex flex-1 items-center space-x-3 rounded-md border p-4 peer-aria-checked:border-primary"
                     >
                       <Image
