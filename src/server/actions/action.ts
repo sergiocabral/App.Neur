@@ -105,22 +105,14 @@ export async function processAction(action: ActionWithUser) {
     const tools = wrapTools(
       {
         extraData: {
+          userId: action.userId,
           walletAddress: activeWallet.publicKey,
           askForConfirmation: false,
+          agentKit: agent,
         },
       },
       toolsRequired,
     );
-
-    const clonedTools = _.cloneDeep(tools);
-    for (const toolName in clonedTools) {
-      const tool = clonedTools[toolName as keyof typeof clonedTools];
-      clonedTools[toolName as keyof typeof clonedTools] = {
-        ...tool,
-        agentKit: agent.data?.agent,
-        userId: action.userId,
-      };
-    }
 
     // Remove createAction from tools, prevent recursive action creation
     delete tools.createAction;
@@ -130,7 +122,7 @@ export async function processAction(action: ActionWithUser) {
     const { response, usage } = await generateText({
       model: defaultModel,
       system: systemPrompt,
-      tools: clonedTools as Record<string, CoreTool<any, any>>,
+      tools,
       experimental_telemetry: {
         isEnabled: true,
         functionId: 'generate-text',

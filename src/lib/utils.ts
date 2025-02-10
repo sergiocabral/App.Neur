@@ -318,3 +318,18 @@ export const IS_SUBSCRIPTION_ENABLED =
   `${process.env.NEXT_PUBLIC_SUB_ENABLED}` === 'true';
 export const IS_TRIAL_ENABLED =
   `${process.env.NEXT_PUBLIC_TRIAL_ENABLED}` === 'true';
+
+export const shouldHideAssistantMessage = (message: Message) => {
+  return (
+    message.role === 'assistant' &&
+    message.toolInvocations &&
+    message.toolInvocations.length > 0 &&
+    !message.toolInvocations
+      .map(
+        (toolInvocation) =>
+          toolInvocation.state === 'result' &&
+          toolInvocation.result?.noFollowUp === true,
+      )
+      .find((b) => b === false)
+  );
+};

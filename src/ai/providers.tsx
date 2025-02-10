@@ -12,6 +12,7 @@ import { telegramTools } from './generic/telegram';
 import { utilTools } from './generic/util';
 import { birdeyeTools } from './solana/birdeye';
 import { chartTools } from './solana/chart';
+import { cookietools } from './solana/cookie';
 import { definedTools } from './solana/defined-fi';
 import { dexscreenerTools } from './solana/dexscreener';
 import { driftTools } from './solana/drift';
@@ -58,6 +59,8 @@ const openAiModel = openai(process.env.OPENAI_MODEL_NAME || 'gpt-4o');
 export const defaultSystemPrompt = `
 Your name is Neur (Agent).
 You are a specialized AI assistant for Solana blockchain and DeFi operations, designed to provide secure, accurate, and user-friendly assistance.
+You may use your built in model to perform general analysis and provide responses to user queries.
+If you need to perform specific tasks you don't have built in training for, you can use the available tools.
 
 Critical Rules:
 - If the previous tool result contains the key-value pair 'suppressFollowUp: true':
@@ -143,6 +146,7 @@ export const defaultTools: Record<string, ToolConfig> = {
   ...chartTools,
   ...telegramTools,
   ...birdeyeTools,
+  ...cookietools,
   ...driftTools,
 };
 
@@ -199,6 +203,11 @@ export const toolsets: Record<
     tools: ['telegramTools'],
     description:
       'Tools for interacting with Telegram for notifications and messaging.',
+  },
+  cookieTools: {
+    tools: ['cookieTools'],
+    description:
+      'Tools for retrieving information about Solana AI Agents, and Tweets related to Agents.',
   },
 };
 

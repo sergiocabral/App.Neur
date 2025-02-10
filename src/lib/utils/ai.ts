@@ -225,7 +225,6 @@ async function handleConfirmation(
       finalToolResults,
       extraData,
     );
-    console.log('result', result);
     if (success && result) {
       updatedToolCallResults = {
         ...updatedToolCallResults,

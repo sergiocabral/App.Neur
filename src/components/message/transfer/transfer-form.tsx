@@ -9,6 +9,7 @@ import { TokenInput } from '@/components/message/token-input';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
+import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import type { TransferDataResult } from '@/types/stream';
 
 import { TransferStatus } from './transfer-status';
@@ -98,31 +99,7 @@ export function TransferForm({ data, onTransfer }: TransferFormProps) {
     showInputs: !['processing', 'completed', 'canceled'].includes(step),
   };
 
-  // Replace the hook usage with dummy data
-  const tokenBalances = {
-    data: {
-      tokens: [
-        {
-          symbol: 'SOL',
-          mint: '11111111111111111111111111111111',
-          balance: 10.5,
-          decimals: 9,
-        },
-        {
-          symbol: 'USDC',
-          mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-          balance: 1000.0,
-          decimals: 6,
-        },
-        {
-          symbol: 'BONK',
-          mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
-          balance: 1000000.0,
-          decimals: 5,
-        },
-      ],
-    },
-  };
+  const tokenBalances = useWalletPortfolio();
 
   const tokenData = tokenBalances?.data?.tokens?.find(
     (t) => t.mint === result?.token?.mint,

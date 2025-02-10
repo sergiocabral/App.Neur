@@ -16,7 +16,11 @@ import { z } from 'zod';
 import { defaultModel, defaultSystemPrompt } from '@/ai/providers';
 import { wrapTools } from '@/ai/tools';
 import { MAX_TOKEN_MESSAGES } from '@/lib/constants';
-import { isValidTokenUsage, logWithTiming } from '@/lib/utils';
+import {
+  isValidTokenUsage,
+  logWithTiming,
+  shouldHideAssistantMessage,
+} from '@/lib/utils';
 import {
   ResponseMessage,
   getToolUpdateMessage,
@@ -120,14 +124,14 @@ export async function POST(req: Request) {
       defaultSystemPrompt,
       `History of attachments: ${JSON.stringify(attachments)}`,
       `User Solana wallet public key: ${publicKey}`,
-      `User ID: ${userId}`,
-      `Conversation ID: ${conversationId}`,
       `Degen Mode: ${degenMode}`,
     ].join('\n\n');
 
     // Filter out empty messages and ensure sorting by createdAt ascending
     const relevant = existingMessages
-      .filter((m) => m.content !== '')
+      .filter(
+        (m) => !(m.content === '' && (m.toolInvocations?.length ?? 0) === 0),
+      )
       .sort(
         (a, b) => (a.createdAt?.getTime() || 0) - (b.createdAt?.getTime() || 0),
       );
@@ -356,6 +360,12 @@ async function saveResponses(
     finalMessages.forEach((m, index) => {
       if (m.createdAt) {
         m.createdAt = new Date(m.createdAt.getTime() + index);
+      }
+      if (m.role === 'assistant' && m.toolInvocations) {
+        m.toolInvocations = m.toolInvocations.filter((t) => t.state !== 'call');
+        if (shouldHideAssistantMessage(m)) {
+          m.content = '';
+        }
       }
     });
 
