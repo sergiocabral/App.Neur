@@ -47,7 +47,6 @@ export const meteoraPosition = (): ToolConfig => {
     description:
       'Call this tool when the user wants to open a liquidity position',
     parameters: z.object({
-      walletAddress: z.string().describe('Wallet address'),
       token: tokenSchema.optional().describe('Token to provide liquidity in'),
       amount: z.number().optional().describe('Amount of token to provide'),
       poolId: z.string().optional().describe('Pool to provide liquidity in'),
