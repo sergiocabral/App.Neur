@@ -1,7 +1,6 @@
 import { Output, streamText, tool } from 'ai';
 import { z } from 'zod';
 
-import { searchWalletAssets } from '@/lib/solana/helius';
 import { diffObjects, streamUpdate } from '@/lib/utils';
 import { MeteoraPool, openMeteoraPosition } from '@/server/actions/meteora';
 import { MeteoraPositionResult, Token } from '@/types/stream';
@@ -9,28 +8,6 @@ import { MeteoraPositionResult, Token } from '@/types/stream';
 import { ToolConfig, WrappedToolProps } from '.';
 import { searchForToken } from './search-token';
 
-export const getUserTokens = ({
-  extraData: { walletAddress },
-}: WrappedToolProps) =>
-  tool({
-    description: 'Search for all tokens held by a wallet.',
-    parameters: z.object({
-      walletAddress: z.string().describe('The wallet address of the token'),
-    }),
-    execute: async ({ walletAddress }) => {
-      const tokens = await searchWalletAssets(walletAddress);
-      return {
-        success: true,
-        result: tokens.fungibleTokens.map((token) => ({
-          symbol: token.token_info.symbol,
-          mint: token.id,
-          balance: token.token_info.balance / 10 ** token.token_info.decimals,
-          logoURI:
-            token.content.files?.[0]?.uri || token.content.links?.image || '',
-        })),
-      };
-    },
-  });
 
 export const tokenSchema = z
   .object({
@@ -46,11 +23,7 @@ export const meteoraPosition = (): ToolConfig => {
   const metadata = {
     description:
       'Call this tool when the user wants to open a liquidity position',
-    parameters: z.object({
-      token: tokenSchema.optional().describe('Token to provide liquidity in'),
-      amount: z.number().optional().describe('Amount of token to provide'),
-      poolId: z.string().optional().describe('Pool to provide liquidity in'),
-    }),
+    parameters: z.object({}),
     updateParameters: z.object({
       token: z.object({
         symbol: z.string(),
@@ -68,7 +41,7 @@ export const meteoraPosition = (): ToolConfig => {
   }: WrappedToolProps) =>
     tool({
       ...metadata,
-      execute: async (originalToolCall, { toolCallId }) => {
+      execute: async (originalToolCall: MeteoraPositionResult | undefined, { toolCallId }) => {
         const updatedToolCall: {
           toolCallId: string;
           status: 'streaming' | 'idle';
@@ -85,10 +58,10 @@ export const meteoraPosition = (): ToolConfig => {
           step: 'token-selection',
         };
 
-        if (originalToolCall.token?.mint || originalToolCall.token?.token) {
+        if (originalToolCall && (originalToolCall.token?.mint || originalToolCall.token?.symbol)) {
           const selectedTokenResult = originalToolCall.token.mint
             ? await searchForToken(originalToolCall.token.mint, false)
-            : await searchForToken(originalToolCall.token.token!);
+            : await searchForToken(originalToolCall.token.symbol!);
           if (selectedTokenResult.success && selectedTokenResult.result) {
             updatedToolCall.token = {
               mint: selectedTokenResult.result.mint,

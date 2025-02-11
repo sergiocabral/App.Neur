@@ -98,8 +98,7 @@ export interface MeteoraPositionResult {
     | 'awaiting-confirmation'
     | 'processing-tnx'
     | 'completed'
-    | 'failed';
-  availableTokens?: Token[];
+    | 'canceled';
   token?: Token | null;
   poolId?: string;
   amount?: number;

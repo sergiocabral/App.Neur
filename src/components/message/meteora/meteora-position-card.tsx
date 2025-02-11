@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 
 import Image from 'next/image';
 
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -25,6 +25,7 @@ import type {
   MeteoraDlmmPair,
 } from '@/server/actions/meteora';
 import type { MeteoraPositionResult } from '@/types/stream';
+import { AnimatePresence, motion } from 'framer-motion';
 
 interface MeteoraPositionCardProps {
   data: {
@@ -111,6 +112,12 @@ export function MeteoraPositionCard({
     });
   };
 
+  const handleCancel = async () => {
+    await addToolResult({
+      step: 'canceled',
+    });
+  };
+
   const handleBack = async () => {
     try {
       setIsLoading(true);
@@ -134,7 +141,7 @@ export function MeteoraPositionCard({
     <Card className="overflow-hidden">
       <CardContent className="pt-6">
         {/* Token Selection Step */}
-        {!selectedToken && !isLoadingPorfolio && (
+        {data.result?.step != 'canceled' && !selectedToken && !isLoadingPorfolio && (
           <>
             <CardHeader>
               <CardTitle>Select Token</CardTitle>
@@ -371,11 +378,57 @@ export function MeteoraPositionCard({
         )}
       </CardContent>
 
+      {data.result?.step === 'canceled' && (
+        <CardContent className='space-y-1'>
+        <div className="flex flex-col gap-4">
+          <AnimatePresence mode="wait">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="py-8"
+            >
+              <div className="flex flex-col items-center space-y-4 text-center">
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 200,
+                    damping: 15,
+                  }}
+                  className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
+                >
+                  <X className="h-8 w-8 text-destructive" />
+                </motion.div>
+  
+                <div className="space-y-1">
+                  <h3 className="text-lg font-medium">Position Canceled</h3>
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <span className="font-medium">
+                      For {selectedAmount} {selectedToken?.symbol}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        </CardContent>
+      )}
+
       {data.result?.step === 'awaiting-confirmation' && (
         <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
-          <Button onClick={handleConfirmation} variant="default">
-            Confirm Position
-          </Button>
+          <div className='flex items-center justify-between gap-2'>
+            {selectedAmount && selectedGroup && selectedPair && selectedToken && (
+              <Button onClick={handleConfirmation} variant="default">
+                Confirm Position
+              </Button>
+            )}
+            <Button onClick={handleCancel} variant="default">
+              Cancel
+            </Button>
+          </div>
           <div className="text-sm text-muted-foreground">
             Ready to open position
           </div>
