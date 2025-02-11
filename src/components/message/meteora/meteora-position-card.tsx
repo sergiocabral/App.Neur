@@ -18,6 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useDlmmForToken } from '@/hooks/use-pools-for-token';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import type {
@@ -141,49 +142,57 @@ export function MeteoraPositionCard({
     <Card className="overflow-hidden">
       <CardContent className="pt-6">
         {/* Token Selection Step */}
-        {data.result?.step != 'canceled' && !selectedToken && !isLoadingPorfolio && (
+        {data.result?.step != 'canceled' && !selectedToken && (
           <>
             <CardHeader>
               <CardTitle>Select Token</CardTitle>
               <CardDescription>Choose a token from your wallet</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              {walletPortfolio?.tokens.map((token) =>
-                token ? (
-                  <div
-                    key={token.mint}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                    onClick={() => handleTokenSelect(token)}
-                  >
-                    <div className="flex items-center gap-3">
-                      {token.imageUrl && (
-                        <Image
-                          src={token.imageUrl || '/placeholder.svg'}
-                          alt={token.symbol || ''}
-                          width={32}
-                          height={32}
-                          className="rounded-full"
-                        />
-                      )}
-                      <div>
-                        <div className="font-medium">{token.symbol}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Balance: {token.balance ?? 0}
+              {isLoadingPorfolio ? (
+                <>
+                  <Skeleton className="h-[68px] w-full rounded-lg" />
+                  <Skeleton className="h-[68px] w-full rounded-lg" />
+                  <Skeleton className="h-[68px] w-full rounded-lg" />
+                </>
+              ) : (
+                walletPortfolio?.tokens.map((token) =>
+                  token ? (
+                    <div
+                      key={token.mint}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                      onClick={() => handleTokenSelect(token)}
+                    >
+                      <div className="flex items-center gap-3">
+                        {token.imageUrl && (
+                          <Image
+                            src={token.imageUrl || '/placeholder.svg'}
+                            alt={token.symbol || ''}
+                            width={32}
+                            height={32}
+                            className="rounded-full"
+                          />
+                        )}
+                        <div>
+                          <div className="font-medium">{token.symbol}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Balance: {token.balance ?? 0}
+                          </div>
                         </div>
                       </div>
+                      {isLoading && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
                     </div>
-                    {isLoading && (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
-                  </div>
-                ) : null,
+                  ) : null,
+                )
               )}
             </CardContent>
           </>
         )}
 
         {/* DLMM Group Selection */}
-        {selectedToken && dlmmGroups && !selectedGroup && (
+        {data.result?.step != 'canceled' && selectedToken && dlmmGroups && !selectedGroup && (
           <>
             <Button
               variant="ghost"
@@ -201,34 +210,43 @@ export function MeteoraPositionCard({
                 <CardDescription>Choose a liquidity group</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {dlmmGroups?.map((group) => (
-                  <div
-                    key={group.name}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                    onClick={() => handleGroupSelect(group)}
-                  >
-                    <div>
-                      <div className="font-medium">{group.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        TVL: ${group.totalTvl.toFixed(0).toLocaleString()} •
-                        APR: {group.maxApr.toFixed(2)}%
+                {isDlmmLoading ? (
+                  <>
+                    <Skeleton className="h-[68px] w-full rounded-lg" />
+                    <Skeleton className="h-[68px] w-full rounded-lg" />
+                    <Skeleton className="h-[68px] w-full rounded-lg" />
+                  </>
+                ) : (
+                  dlmmGroups?.map((group) => (
+                    <div
+                      key={group.name}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                      onClick={() => handleGroupSelect(group)}
+                    >
+                      <div>
+                        <div className="font-medium">{group.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          TVL: ${group.totalTvl.toFixed(0).toLocaleString()} •
+                          APR: {group.maxApr.toFixed(2)}%
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </CardContent>
             </>
           </>
         )}
 
         {/* Pool Selection */}
-        {selectedToken && selectedGroup && !selectedPair && (
+        {data.result?.step != 'canceled' && selectedToken && selectedGroup && !selectedPair && (
           <>
             <Button
               variant="ghost"
               size="sm"
               onClick={handleBack}
               className="mb-4 h-8 px-2"
+              disabled={isLoading}
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
@@ -240,31 +258,39 @@ export function MeteoraPositionCard({
                 <CardDescription>Choose a liquidity pool</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {selectedGroup.pairs?.map((pair) => (
-                  <div
-                    key={pair.address}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                    onClick={() => handlePairSelect(pair)}
-                  >
-                    <div>
-                      <div className="font-medium">{pair.name}</div>
-                      <div className="text-sm text-muted-foreground">
-                        TVL: $
-                        {Number.parseFloat(pair.liquidity)
-                          .toFixed(0)
-                          .toLocaleString()}{' '}
-                        • APR: {pair.apr.toFixed(2)}%
+                {isLoading ? (
+                  <>
+                    <Skeleton className="h-[68px] w-full rounded-lg" />
+                    <Skeleton className="h-[68px] w-full rounded-lg" />
+                    <Skeleton className="h-[68px] w-full rounded-lg" />
+                  </>
+                ) : (
+                  selectedGroup.pairs?.map((pair) => (
+                    <div
+                      key={pair.address}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                      onClick={() => handlePairSelect(pair)}
+                    >
+                      <div>
+                        <div className="font-medium">{pair.name}</div>
+                        <div className="text-sm text-muted-foreground">
+                          TVL: $
+                          {Number.parseFloat(pair.liquidity)
+                            .toFixed(0)
+                            .toLocaleString()}{' '}
+                          • APR: {pair.apr.toFixed(2)}%
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
               </CardContent>
             </>
           </>
         )}
 
         {/* Amount Input and Pool Details */}
-        {selectedToken && selectedGroup && selectedPair && (
+        {data.result?.step != 'canceled' && selectedToken && selectedGroup && selectedPair && (
           <div className="space-y-6">
             <Button
               variant="ghost"
