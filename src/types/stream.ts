@@ -86,8 +86,8 @@ export interface TransferDataResult {
 export interface Token {
   symbol: string;
   mint: string;
-  balance: number;
-  logoURI?: string;
+  balance?: number;
+  logoURI?: string | null;
 }
 
 export interface MeteoraPositionResult {
@@ -100,9 +100,8 @@ export interface MeteoraPositionResult {
     | 'completed'
     | 'failed';
   availableTokens?: Token[];
-  selectedToken?: Token;
-  pools?: MeteoraPool[];
-  selectedPool?: MeteoraPool;
+  token?: Token | null;
+  poolId?: string;
   amount?: number;
   signature?: string;
   error?: string;

@@ -3,14 +3,11 @@ import { z } from 'zod';
 
 import { searchWalletAssets } from '@/lib/solana/helius';
 import { diffObjects, streamUpdate } from '@/lib/utils';
-import {
-  getMeteoraPoolsForToken,
-  openMeteoraPosition,
-} from '@/server/actions/meteora';
+import { MeteoraPool, openMeteoraPosition } from '@/server/actions/meteora';
+import { MeteoraPositionResult, Token } from '@/types/stream';
 
 import { ToolConfig, WrappedToolProps } from '.';
-import { openai } from '../providers';
-import { MeteoraPositionResult } from '@/types/stream';
+import { searchForToken } from './search-token';
 
 export const getUserTokens = ({
   extraData: { walletAddress },
@@ -28,7 +25,8 @@ export const getUserTokens = ({
           symbol: token.token_info.symbol,
           mint: token.id,
           balance: token.token_info.balance / 10 ** token.token_info.decimals,
-          logoURI: token.content.files?.[0]?.uri || token.content.links?.image || '',
+          logoURI:
+            token.content.files?.[0]?.uri || token.content.links?.image || '',
         })),
       };
     },
@@ -46,21 +44,21 @@ export const tokenSchema = z
 
 export const meteoraPosition = (): ToolConfig => {
   const metadata = {
-    description: 'Use this tool when the user wants to open or provide liquidity in a DLMM Pool. The tool will guide through selecting a token, choosing a pool, and specifying the amount to deposit.',
+    description:
+      'Call this tool when the user wants to open a liquidity position',
     parameters: z.object({
-      token: tokenSchema,
-      amount: z.number(),
-      poolId: z.string(),
+      walletAddress: z.string().describe('Wallet address'),
+      token: tokenSchema.optional().describe('Token to provide liquidity in'),
+      amount: z.number().optional().describe('Amount of token to provide'),
+      poolId: z.string().optional().describe('Pool to provide liquidity in'),
     }),
     updateParameters: z.object({
-      token: z
-        .object({
-          symbol: z.string(),
-          mint: z.string(),
-        })
-        .optional(),
-      amount: z.number().optional(),
-      poolId: z.string().optional(),
+      token: z.object({
+        symbol: z.string(),
+        mint: z.string(),
+      }),
+      amount: z.number(),
+      poolId: z.string(),
     }),
   };
 
@@ -71,292 +69,81 @@ export const meteoraPosition = (): ToolConfig => {
   }: WrappedToolProps) =>
     tool({
       ...metadata,
-      execute: async ( input:MeteoraPositionResult = {}, { toolCallId }) => {  // Correct
-        console.log("Tool Started")
-        const updatedToolCall: MeteoraPositionResult = {
-          step: 'token-selection'  // Initial step
+      execute: async (originalToolCall, { toolCallId }) => {
+        const updatedToolCall: {
+          toolCallId: string;
+          status: 'streaming' | 'idle';
+          step: string;
+          token?: {
+            symbol: string;
+            mint: string;
+            name: string;
+            imageUrl?: string | null;
+          } | null;
+        } = {
+          toolCallId,
+          status: 'streaming',
+          step: 'token-selection',
         };
 
-        // Step 1: Get user's token balances
-          console.log('📍 Step 1: Initiating token-selection step');
-
-        try {
-          console.log('🔍 Fetching user token balances...');
-
-          // const { experimental_partialOutputStream: partialOutputStream } =
-          //   streamText({
-          //     model: openai('gpt-4o-mini', { structuredOutputs: true }),
-          //     system: 'Use the tools required to fetch user token balances',
-          //     prompt: `Get the user token balances for wallet address ${walletAddress}`,
-          //     maxSteps: 6,
-          //     tools: {
-          //       getUserTokens: getUserTokens(),
-          //     },
-          //     experimental_output: Output.object({
-          //       schema: z.object({
-          //         availableTokens: z.array(
-          //           z.object({
-          //             symbol: z.string(),
-          //             mint: z.string(),
-          //             balance: z.number(),
-          //             logoURI: z.string().optional(),
-          //           }),
-          //         ),
-          //       }),
-          //     }),
-          //   });
-
-          console.log('💫 Starting to process token stream...');
-
-          const tokens = await getUserTokens({
-            extraData: {walletAddress},
-          }).execute({walletAddress},{toolCallId, messages:[] });
-              // Process the stream output
-          // for await (const delta of partialOutputStream) {
-          //   if (delta?.availableTokens) {
-          //     const transformedTokens = delta.availableTokens
-          //       .filter((t): t is NonNullable<typeof t> => t !== undefined && t.mint != undefined && t.symbol != undefined && t.balance != undefined)
-          //       .map(token => ({
-          //         mint: token.mint || '',
-          //         symbol: token.symbol || '',
-          //         imageUrl: token.logoURI || '', // Providing empty string as fallback
-          //         balance: token.balance || 0,
-          //       }));
-              
-          //     streamUpdate({
-          //       stream: dataStream,
-          //       update: {
-          //         type: 'stream-result-data',
-          //         toolCallId,
-          //         content: {
-          //           step: 'token-selection',
-          //           availableTokens: transformedTokens,
-          //         },
-          //       },
-          //     });
-          //   }
-          // }
-          if(tokens.result && updatedToolCall.step === 'token-selection'){
-            console.log("Updating stream with token selection", tokens.result)
-            streamUpdate({
-              stream: dataStream,
-              update: {
-                type: 'stream-result-data',
-                toolCallId,
-                content: {
-                  step: 'token-selection',
-                  availableTokens: tokens.result,
-                },
-              },
-            });
-          }
-
-          // Step 2: Once token is selected, get Meteora Pools
-          if (updatedToolCall.step === 'token-selection' && !updatedToolCall.selectedToken) {
-            // Wait for frontend to provide selected token
-            console.log("Waiting for token selection............");
-            streamUpdate({
-              stream: dataStream,
-              update: {
-                status: 'idle',
-                type: 'stream-result-data',
-                toolCallId,
-                content: {
-                  step: 'token-selection',
-                },
-              },
-            });
-
-            // The tool will pause here waiting for frontend input
-            if (abortData?.abortController) {
-              abortData.shouldAbort = true;
-            }
-
-            return {
-              success: true,
-              result: {
-                step: 'token-selection',
-                ...updatedToolCall
-              }
+        if (originalToolCall.token?.mint || originalToolCall.token?.token) {
+          const selectedTokenResult = originalToolCall.token.mint
+            ? await searchForToken(originalToolCall.token.mint, false)
+            : await searchForToken(originalToolCall.token.token!);
+          if (selectedTokenResult.success && selectedTokenResult.result) {
+            updatedToolCall.token = {
+              mint: selectedTokenResult.result.mint,
+              symbol: selectedTokenResult.result.symbol,
+              name: selectedTokenResult.result.name,
+              imageUrl: selectedTokenResult.result.logoURI,
             };
-          }
-
-          // When frontend sends back selected token via addToolResult
-          if (updatedToolCall.selectedToken?.mint) {
-            console.log(
-              '📍 Step 2: Token selected, fetching pools for mint:',
-              updatedToolCall.selectedToken.mint,
-            );
-            
-            try {
-              const pools = await getMeteoraPoolsForToken(
-                updatedToolCall.selectedToken.mint,
-              );
-
-              console.log('🏊‍♂️ Pools fetched:', pools);
-              
-              streamUpdate({
-                stream: dataStream,
-                update: {
-                  type: 'stream-result-data',
-                  toolCallId,
-                  content: {
-                    step: 'pool-selection',
-                    selectedToken: updatedToolCall.selectedToken,
-                    selectedPool: pools[0],
-                  },
+            streamUpdate({
+              stream: dataStream,
+              update: {
+                type: 'stream-result-data',
+                status: 'idle',
+                toolCallId,
+                content: {
+                  token: updatedToolCall.token ?? undefined,
                 },
+              },
+            });
+
+            if (
+              originalToolCall.amount &&
+              originalToolCall.poolId &&
+              !askForConfirmation
+            ) {
+              const result = await openMeteoraPosition({
+                poolId: originalToolCall.poolId,
+                tokenMint: updatedToolCall.token.mint,
+                amount: originalToolCall.amount,
               });
-            } catch (error) {
-              console.error('❌ Error fetching pools:', error);
-              streamUpdate({
-                stream: dataStream,
-                update: {
-                  type: 'stream-result-data',
-                  toolCallId,
-                  content: {
-                    step: 'failed',
-                    error: 'Failed to fetch pools',
-                  },
-                },
-              });
-            }
-          }
-
-          if(updatedToolCall.selectedPool){
-            streamUpdate({
-              stream: dataStream,
-              update: {
-                type: 'stream-result-data',
-                toolCallId,
-                content: {
-                  step: 'amount-input',
-                  amount: updatedToolCall.amount,
-                  selectedPool: updatedToolCall.selectedPool,
-                  selectedToken: updatedToolCall.selectedToken,
-                },
-              },
-            })
-          }
-
-          if(updatedToolCall.step === 'amount-input' && !updatedToolCall.amount){
-            streamUpdate({
-              stream: dataStream,
-              update: {
-                status: 'idle',
-                type: 'stream-result-data',
-                toolCallId,
-                content: {
-                  step: 'amount-input',
-                },
-              },
-            });
-
-            if(abortData?.abortController){
-              abortData.shouldAbort = true;
-            }
-
-            return {
-              success: true,
-              result: {
-                step: 'amount-input',
-                ...updatedToolCall
+              if (!result.success || !result.result?.signature) {
+                return {
+                  success: false,
+                  error: result.error,
+                };
               }
-            };
-          }
-
-          if(updatedToolCall.amount){
-            console.log("Did you fill the amount?", updatedToolCall.amount)
-            streamUpdate({
-              stream: dataStream,
-              update: {
-                status: 'idle',
-                type: 'stream-result-data',
-                toolCallId,
-                content: {
-                  step: 'awaiting-confirmation',
+              return {
+                success: true,
+                noFollowUp: true,
+                result: {
+                  ...updatedToolCall,
+                  signature: result.result.signature,
+                  step: 'completed',
                 },
-              },
-            });
-
-            if(abortData?.abortController){
-              abortData.shouldAbort = true;
-            }
-
-            return {
-              success: true,
-              result: {
-                step: 'awaiting-confirmation',
-                ...updatedToolCall
-              }
+              };
             }
           }
+        }
 
-          if(
-            updatedToolCall.step == 'processing-tnx' &&
-            updatedToolCall.selectedToken &&
-            updatedToolCall.amount &&
-            updatedToolCall.selectedPool
-          ){
-
-          // Process the transaction
-          console.log('🔄 Processing transaction with parameters:', {
-            poolId: updatedToolCall.selectedPool.poolId,
-            tokenMint: updatedToolCall.selectedToken.mint,
-              amount: updatedToolCall.amount,
-            });
-  
-            const result = await openMeteoraPosition({
-              poolId: updatedToolCall.selectedPool.poolId,
-              tokenMint: updatedToolCall.selectedToken.mint,
-              amount: updatedToolCall.amount,
-            });
-
-            console.log('📝 Transaction result:', result);
-
-            streamUpdate({
-              stream: dataStream,
-              update: {
-                type: 'stream-result-data',
-                toolCallId,
-                content: {
-                  step: result.success ? 'completed' : 'failed',
-                  signature: result.result?.signature,
-                },
-              },
-            });        
-            return {
-              success: true,
-              result: {
-                step: result.success ? 'completed' : 'failed',
-                ...updatedToolCall,
-                signature: result.result?.signature,
-              },
-            };
-          }
-        } catch (error) {
-          console.error('❌ Error in Meteora tool:', error);
-          streamUpdate({
-            stream: dataStream,
-            update: {
-              type: 'stream-result-data',
-              toolCallId,
-              content: {
-                step: 'failed',
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : 'Unknown error occurred',
-              },
-            },
-          });
-        }       
         return {
           success: true,
+          noFollowUp: true,
           result: {
-            step: result.success ? 'completed' : 'failed',
             ...updatedToolCall,
-            signature: result.result?.signature,
+            step: 'awaiting-confirmation',
           },
         };
       },

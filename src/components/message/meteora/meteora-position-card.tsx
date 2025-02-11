@@ -1,21 +1,35 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 
 import Image from 'next/image';
 
-import { CheckCircle2, Loader2, XCircle } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { MeteoraPool } from '@/server/actions/meteora';
-import { DataStreamDelta } from '@/types/stream';
-import { MeteoraPositionResult } from '@/types/stream';
-import { getTokenBalance } from '@/ai/tools/search-token';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
+import { useDlmmForToken } from '@/hooks/use-pools-for-token';
+import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
+import type {
+  MeteoraDlmmGroup,
+  MeteoraDlmmPair,
+} from '@/server/actions/meteora';
+import type { MeteoraPositionResult } from '@/types/stream';
 
 interface MeteoraPositionCardProps {
   data: {
     success: boolean;
-    result: MeteoraPositionResult;
+    result?: MeteoraPositionResult;
   };
   addToolResult: (result: MeteoraPositionResult) => void;
   toolCallId: string;
@@ -23,207 +37,341 @@ interface MeteoraPositionCardProps {
 
 export function MeteoraPositionCard({
   data,
-  addToolResult
+  addToolResult,
 }: MeteoraPositionCardProps) {
-  const { result } = data;
-  console.log(result);
-  const [amount, setAmount] = useState<string>('');
+  // Local state for form data
+  const [selectedToken, setSelectedToken] = useState(data.result?.token);
+  const [selectedAmount, setSelectedAmount] = useState<string>(
+    data.result?.amount?.toString() || '',
+  );
+  const [selectedGroup, setSelectedGroup] = useState<MeteoraDlmmGroup | null>(
+    null,
+  );
+  const [selectedPair, setSelectedPair] = useState<MeteoraDlmmPair | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
+
+  // Sync with incoming result changes
+  useEffect(() => {
+    // Only update if result exists and the token actually changed
+    if (data.result?.token?.mint !== selectedToken?.mint) {
+      setSelectedToken(data.result?.token);
+      setSelectedAmount(data.result?.amount?.toString() || '');
+      setSelectedGroup(null);
+      setSelectedPair(null);
+    }
+  }, [data.result, selectedToken?.mint]);
+
+  const { data: walletPortfolio, isLoading: isLoadingPorfolio } =
+    useWalletPortfolio();
+  const { isLoading: isDlmmLoading, data: dlmmGroups } = useDlmmForToken(
+    selectedToken?.mint,
+  );
 
   const handleTokenSelect = async (token: {
     symbol: string;
     mint: string;
-    balance: number;
-    logoURI?: string;
+    name: string;
+    imageUrl?: string | null;
   }) => {
     try {
       setIsLoading(true);
+      setSelectedToken(token);
       await addToolResult({
-        ...result,
-        selectedToken: {
-          symbol: token.symbol,
-          mint: token.mint,
-          balance: token.balance,
-          logoURI: token.logoURI,
-        },
-        step: 'token-selection',
+        step: data.result?.step || 'awaiting-confirmation',
+        token,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePoolSelect = async (pool: MeteoraPool) => {
-    await addToolResult({
-      ...result,
-      selectedPool: pool,
-      step: 'pool-selection',
-    });
+  const handleGroupSelect = async (group: MeteoraDlmmGroup) => {
+    setSelectedGroup(group);
+  };
+
+  const handlePairSelect = async (pair: MeteoraDlmmPair) => {
+    setSelectedPair(pair);
   };
 
   const handleAmountSubmit = async () => {
     await addToolResult({
-      ...result,
-      amount: parseFloat(amount),
-      step: 'amount-input'
+      step: 'amount-input',
+      token: selectedToken,
+      amount: Number.parseFloat(selectedAmount),
     });
   };
 
   const handleConfirmation = async () => {
     await addToolResult({
-      ...result,
       step: 'awaiting-confirmation',
+      token: selectedToken,
+      amount: selectedAmount ? Number.parseFloat(selectedAmount) : undefined,
     });
+  };
+
+  const handleBack = async () => {
+    try {
+      setIsLoading(true);
+      if (selectedPair) {
+        setSelectedPair(null);
+      } else if (selectedGroup) {
+        setSelectedGroup(null);
+      } else if (selectedToken) {
+        setSelectedToken(null);
+        await addToolResult({
+          step: 'awaiting-confirmation',
+          token: null,
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
     <Card className="overflow-hidden">
       <CardContent className="pt-6">
-        {/* Find This Please! {result?.step} and {result?.availableTokens?.length} */}
         {/* Token Selection Step */}
-        {result?.step === 'token-selection' && result?.availableTokens && (
-          <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">Select Token</div>
-            {result.availableTokens.map((token) =>
-              token ? (
-                <div
-                  key={token.mint}
-                  className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                  onClick={() => handleTokenSelect(token)}
-                >
-                  <div className="flex items-center gap-3">
-                    {token.logoURI && (
-                      <Image
-                        src={token.logoURI}
-                        alt={token.symbol || ''}
-                        width={32}
-                        height={32}
-                        className="rounded-full"
-                      />
+        {!selectedToken && !isLoadingPorfolio && (
+          <>
+            <CardHeader>
+              <CardTitle>Select Token</CardTitle>
+              <CardDescription>Choose a token from your wallet</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {walletPortfolio?.tokens.map((token) =>
+                token ? (
+                  <div
+                    key={token.mint}
+                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                    onClick={() => handleTokenSelect(token)}
+                  >
+                    <div className="flex items-center gap-3">
+                      {token.imageUrl && (
+                        <Image
+                          src={token.imageUrl || '/placeholder.svg'}
+                          alt={token.symbol || ''}
+                          width={32}
+                          height={32}
+                          className="rounded-full"
+                        />
+                      )}
+                      <div>
+                        <div className="font-medium">{token.symbol}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Balance: {token.balance ?? 0}
+                        </div>
+                      </div>
+                    </div>
+                    {isLoading && (
+                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                     )}
+                  </div>
+                ) : null,
+              )}
+            </CardContent>
+          </>
+        )}
+
+        {/* DLMM Group Selection */}
+        {selectedToken && dlmmGroups && !selectedGroup && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="mb-4 h-8 px-2"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+
+            <>
+              <CardHeader>
+                <CardTitle>Select DLMM Group</CardTitle>
+                <CardDescription>Choose a liquidity group</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {dlmmGroups?.map((group) => (
+                  <div
+                    key={group.name}
+                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                    onClick={() => handleGroupSelect(group)}
+                  >
                     <div>
-                      <div className="font-medium">{token.symbol}</div>
+                      <div className="font-medium">{group.name}</div>
                       <div className="text-sm text-muted-foreground">
-                        Balance: {token.balance ?? 0}
+                        TVL: ${group.totalTvl.toFixed(0).toLocaleString()} •
+                        APR: {group.maxApr.toFixed(2)}%
                       </div>
                     </div>
                   </div>
-                  {isLoading && (
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  )}
-                </div>
-              ) : null,
-            )}
-          </div>
+                ))}
+              </CardContent>
+            </>
+          </>
         )}
-        {/* Pool Selection Step */}
-        {/*{result?.step === 'pool-selection' && result?.pools && (
-          <div className="space-y-3">
-            <div className="text-sm text-muted-foreground">Select Pool</div>
-            {result.pools.map((pool) => (
-              <div
-                key={pool.poolId}
-                className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                onClick={() => handlePoolSelect(pool)}
-              >
-                <div>
-                  <div className="font-medium">{pool.poolName}</div>
-                  <div className="text-sm text-muted-foreground">
-                    TVL: ${pool.tvl.toLocaleString()} • APR: {pool.apr}%
+
+        {/* Pool Selection */}
+        {selectedToken && selectedGroup && !selectedPair && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="mb-4 h-8 px-2"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+
+            <>
+              <CardHeader>
+                <CardTitle>Select Pool</CardTitle>
+                <CardDescription>Choose a liquidity pool</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {selectedGroup.pairs?.map((pair) => (
+                  <div
+                    key={pair.address}
+                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                    onClick={() => handlePairSelect(pair)}
+                  >
+                    <div>
+                      <div className="font-medium">{pair.name}</div>
+                      <div className="text-sm text-muted-foreground">
+                        TVL: $
+                        {Number.parseFloat(pair.liquidity)
+                          .toFixed(0)
+                          .toLocaleString()}{' '}
+                        • APR: {pair.apr.toFixed(2)}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </>
+          </>
+        )}
+
+        {/* Amount Input and Pool Details */}
+        {selectedToken && selectedGroup && selectedPair && (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleBack}
+              className="mb-4 h-8 px-2"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>{selectedPair.name}</CardTitle>
+                <CardDescription>Pool Information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Liquidity</Label>
+                    <div className="font-medium">
+                      $
+                      {Number.parseFloat(
+                        selectedPair.liquidity,
+                      ).toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">24h Volume</Label>
+                    <div className="font-medium">
+                      ${selectedPair.trade_volume_24h.toLocaleString()}
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">APR</Label>
+                    <div className="font-medium">
+                      {selectedPair.apr.toFixed(2)}%
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Bin Step</Label>
+                    <div className="font-medium">{selectedPair.bin_step}</div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">Fee %</Label>
+                    <div className="font-medium">
+                      {Number.parseFloat(
+                        selectedPair.base_fee_percentage,
+                      ).toFixed(2)}
+                      %
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-muted-foreground">24h Fees</Label>
+                    <div className="font-medium">
+                      ${selectedPair.fees_24h.toLocaleString()}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}*/}
 
-        {result?.step === 'amount-input' && result?.selectedToken && (
-          <div className="space-y-4">
-            <div>
-              <div className="text-sm text-muted-foreground">Amount</div>
-              <div className="mt-1">
-                <Input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder={`Enter amount`}
-                />
+                <Separator />
+
+                <div className="space-y-1.5">
+                  <Label className="text-muted-foreground">Token Pair</Label>
+                  <div className="grid gap-1.5 text-sm">
+                    <div className="font-medium">
+                      Token X: {selectedPair.mint_x.slice(0, 8)}...
+                      {selectedPair.mint_x.slice(-8)}
+                    </div>
+                    <div className="font-medium">
+                      Token Y: {selectedPair.mint_y.slice(0, 8)}...
+                      {selectedPair.mint_y.slice(-8)}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="amount">Amount</Label>
+                {walletPortfolio?.tokens.find(
+                  (t) => t?.mint === selectedToken?.mint,
+                ) && (
+                  <span className="text-sm text-muted-foreground">
+                    Balance:{' '}
+                    {walletPortfolio.tokens.find(
+                      (t) => t?.mint === selectedToken?.mint,
+                    )?.balance ?? 0}
+                  </span>
+                )}
               </div>
+              <Input
+                id="amount"
+                type="number"
+                value={selectedAmount}
+                onChange={(e) => setSelectedAmount(e.target.value)}
+                placeholder="Enter amount"
+              />
             </div>
             <Button
               className="w-full"
               onClick={handleAmountSubmit}
-              disabled={!amount || parseFloat(amount) <= 0}
+              disabled={
+                !selectedAmount || Number.parseFloat(selectedAmount) <= 0
+              }
             >
               Continue
             </Button>
           </div>
         )}
-        {/* Confirmation Step */}
-        {result?.step === 'awaiting-confirmation' && (
-          <div className="space-y-4">
-            <div className="rounded-lg border p-4">
-              <h3 className="mb-4 font-medium">Position Details</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Token:</span>
-                  <span>{result.selectedToken?.symbol}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Amount:</span>
-                  <span>{result.amount}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Pool:</span>
-                  <span>{result.selectedPool?.poolName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">APR:</span>
-                  <span>{result.selectedPool?.apr}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-        {/* Processing State */}
-        {result?.step === 'processing-tnx' && (
-          <div className="flex items-center justify-center gap-2 py-4">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm text-muted-foreground">
-              Processing transaction...
-            </span>
-          </div>
-        )}
-        {/* Completed State */}
-        {result?.step === 'completed' && result?.signature && (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm text-emerald-600">
-              <CheckCircle2 className="h-4 w-4" />
-              <span>Position opened successfully!</span>
-            </div>
-            <a
-              href={`https://solscan.io/tx/${result.signature}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-sm text-primary hover:underline"
-            >
-              View transaction
-            </a>
-          </div>
-        )}
-        {/* Failed State */}
-        {result?.step === 'failed' && (
-          <div className="flex items-center gap-2 text-sm text-destructive">
-            <XCircle className="h-4 w-4" />
-            <span>
-              {result.error || 'Failed to open position. Please try again.'}
-            </span>
-          </div>
-        )}
       </CardContent>
 
-      {/* Confirmation Footer */}
-      {result?.step === 'awaiting-confirmation' && (
+      {data.result?.step === 'awaiting-confirmation' && (
         <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
           <Button onClick={handleConfirmation} variant="default">
             Confirm Position
