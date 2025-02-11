@@ -2,11 +2,8 @@ import { cache } from 'react';
 
 import { BN } from '@coral-xyz/anchor';
 import DLMM, { StrategyType } from '@meteora-ag/dlmm';
-import {
-  Connection,
-  PublicKey,
-  sendAndConfirmTransaction,
-} from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import { SolanaAgentKit } from 'solana-agent-kit';
 
 import { retrieveAgentKit } from './ai';
 import { performSwap } from './swap';
@@ -106,16 +103,26 @@ export const getMeteoraDlmmForToken = cache(
   },
 );
 
-export const openMeteoraPosition = async ({
-  poolId,
-  tokenMint,
-  amount,
-}: {
-  poolId: string;
-  tokenMint: string;
-  amount: number;
-}) => {
-  const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
+export const openMeteoraPosition = async (
+  {
+    poolId,
+    token: inputToken,
+    amount,
+  }: {
+    poolId: string;
+    token: {
+      mint: string;
+      symbol?: string;
+    };
+    amount: number;
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
   if (!agent) {
     return {
@@ -125,8 +132,7 @@ export const openMeteoraPosition = async ({
   }
 
   try {
-    const connection = new Connection(process.env.RPC_URL || '');
-    const dlmmPool = await DLMM.create(connection, new PublicKey(poolId));
+    const dlmmPool = await DLMM.create(agent.connection, new PublicKey(poolId));
 
     // Get active bin for price reference
     const activeBin = await dlmmPool.getActiveBin();
@@ -139,22 +145,34 @@ export const openMeteoraPosition = async ({
       Number(activeBin.price),
     );
 
-    const isBaseX = dlmmPool.tokenX.publicKey.toBase58() === tokenMint;
+    const isBaseX = dlmmPool.tokenX.publicKey.toBase58() === inputToken.mint;
 
     const inputAmount = amount / 2;
 
-    const totalBaseAmount = isBaseX
-      ? new BN(inputAmount * Math.pow(10, dlmmPool.tokenX.decimal))
-      : new BN(inputAmount * Math.pow(10, dlmmPool.tokenY.decimal));
-    const totalQuoteAmount = totalBaseAmount.mul(
-      new BN(Number(activeBinPricePerToken)),
-    );
+    let tokenXAmountBN, tokenYAmountBN;
+
+    if (isBaseX) {
+      tokenXAmountBN = new BN(
+        inputAmount * Math.pow(10, dlmmPool.tokenX.decimal),
+      );
+      tokenYAmountBN = new BN(
+        inputAmount *
+          parseFloat(activeBinPricePerToken) *
+          Math.pow(10, dlmmPool.tokenY.decimal),
+      );
+    } else {
+      tokenYAmountBN = new BN(
+        inputAmount * Math.pow(10, dlmmPool.tokenY.decimal),
+      );
+      tokenXAmountBN = new BN(
+        (inputAmount / parseFloat(activeBinPricePerToken)) *
+          Math.pow(10, dlmmPool.tokenX.decimal),
+      );
+    }
 
     const swapResult = await performSwap(
       {
-        inputToken: {
-          mint: tokenMint,
-        },
+        inputToken,
         outputToken: {
           mint: isBaseX
             ? dlmmPool.tokenY.publicKey.toBase58()
@@ -173,12 +191,13 @@ export const openMeteoraPosition = async ({
     }
 
     // Create position transaction
+    const positionKeypair = new Keypair();
     const createPositionTx =
       await dlmmPool.initializePositionAndAddLiquidityByStrategy({
-        positionPubKey: agent.wallet.publicKey,
+        positionPubKey: positionKeypair.publicKey,
         user: agent.wallet.publicKey,
-        totalXAmount: isBaseX ? totalBaseAmount : totalQuoteAmount,
-        totalYAmount: isBaseX ? totalQuoteAmount : totalBaseAmount,
+        totalXAmount: tokenXAmountBN,
+        totalYAmount: tokenYAmountBN,
         strategy: {
           maxBinId,
           minBinId,
@@ -186,7 +205,10 @@ export const openMeteoraPosition = async ({
         },
       });
 
+    createPositionTx.feePayer = agent.wallet.publicKey;
+
     const signedTx = await agent.wallet.signTransaction(createPositionTx);
+    signedTx.partialSign(positionKeypair);
     const signature = await agent.connection.sendRawTransaction(
       signedTx.serialize(),
       {
@@ -195,6 +217,8 @@ export const openMeteoraPosition = async ({
         preflightCommitment: 'confirmed',
       },
     );
+
+    await agent.connection.confirmTransaction(signature);
 
     return {
       success: true,

@@ -1,4 +1,4 @@
-import { Output, streamText, tool } from 'ai';
+import { Output, generateObject, streamText, tool } from 'ai';
 import { z } from 'zod';
 
 import { diffObjects, streamUpdate } from '@/lib/utils';
@@ -6,8 +6,8 @@ import { MeteoraPool, openMeteoraPosition } from '@/server/actions/meteora';
 import { MeteoraPositionResult, Token } from '@/types/stream';
 
 import { ToolConfig, WrappedToolProps } from '.';
+import { openai } from '../providers';
 import { searchForToken } from './search-token';
-
 
 export const tokenSchema = z
   .object({
@@ -22,8 +22,14 @@ export const tokenSchema = z
 export const meteoraPosition = (): ToolConfig => {
   const metadata = {
     description:
-      'Call this tool when the user wants to open a liquidity position',
-    parameters: z.object({}),
+      'Call this tool when the user wants to open a liquidity position.',
+    parameters: z.object({
+      message: z
+        .string()
+        .optional()
+        .or(z.literal(''))
+        .describe('Message that the user sent'),
+    }),
     updateParameters: z.object({
       token: z.object({
         symbol: z.string(),
@@ -37,11 +43,11 @@ export const meteoraPosition = (): ToolConfig => {
   const buildTool = ({
     dataStream = undefined,
     abortData,
-    extraData: { askForConfirmation, walletAddress },
+    extraData: { askForConfirmation, agentKit },
   }: WrappedToolProps) =>
     tool({
       ...metadata,
-      execute: async (originalToolCall: MeteoraPositionResult | undefined, { toolCallId }) => {
+      execute: async ({ message }: { message?: string }, { toolCallId }) => {
         const updatedToolCall: {
           toolCallId: string;
           status: 'streaming' | 'idle';
@@ -58,7 +64,25 @@ export const meteoraPosition = (): ToolConfig => {
           step: 'token-selection',
         };
 
-        if (originalToolCall && (originalToolCall.token?.mint || originalToolCall.token?.symbol)) {
+        const { object: originalToolCall } = await generateObject({
+          model: openai('gpt-4o-mini', { structuredOutputs: true }),
+          schema: z.object({
+            token: z
+              .object({
+                symbol: z.string().nullable(),
+                mint: z.string().nullable(),
+              })
+              .nullable(),
+            amount: z.number().nullable(),
+            poolId: z.string().nullable(),
+          }),
+          prompt: `The user sent the following message: ${message}`,
+        });
+
+        if (
+          originalToolCall &&
+          (originalToolCall.token?.mint || originalToolCall.token?.symbol)
+        ) {
           const selectedTokenResult = originalToolCall.token.mint
             ? await searchForToken(originalToolCall.token.mint, false)
             : await searchForToken(originalToolCall.token.symbol!);
@@ -86,11 +110,14 @@ export const meteoraPosition = (): ToolConfig => {
               originalToolCall.poolId &&
               !askForConfirmation
             ) {
-              const result = await openMeteoraPosition({
-                poolId: originalToolCall.poolId,
-                tokenMint: updatedToolCall.token.mint,
-                amount: originalToolCall.amount,
-              });
+              const result = await openMeteoraPosition(
+                {
+                  poolId: originalToolCall.poolId,
+                  token: updatedToolCall.token,
+                  amount: originalToolCall.amount,
+                },
+                { agentKit },
+              );
               if (!result.success || !result.result?.signature) {
                 return {
                   success: false,

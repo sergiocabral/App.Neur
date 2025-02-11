@@ -96,7 +96,8 @@ export interface MeteoraPositionResult {
     | 'pool-selection'
     | 'amount-input'
     | 'awaiting-confirmation'
-    | 'processing-tnx'
+    | 'confirmed'
+    | 'processing'
     | 'completed'
     | 'canceled';
   token?: Token | null;
