@@ -102,6 +102,7 @@ export function MeteoraPositionCard({
       step: 'amount-input',
       token: selectedToken,
       amount: Number.parseFloat(selectedAmount),
+      poolId: selectedPair?.address,
     });
   };
 
@@ -110,6 +111,7 @@ export function MeteoraPositionCard({
       step: 'awaiting-confirmation',
       token: selectedToken,
       amount: selectedAmount ? Number.parseFloat(selectedAmount) : undefined,
+      poolId: selectedPair?.address,
     });
   };
 
