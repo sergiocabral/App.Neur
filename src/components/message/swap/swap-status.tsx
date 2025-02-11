@@ -45,7 +45,7 @@ export function SwapStatus({ result, inputAmount }: SwapStatusProps) {
   );
 }
 
-function ProcessingAnimation() {
+export function ProcessingAnimation() {
   return (
     <div className="flex flex-col items-center gap-4">
       <div className="relative flex h-16 w-16 items-center justify-center">

@@ -27,6 +27,7 @@ import type {
   MeteoraDlmmPair,
 } from '@/server/actions/meteora';
 import type { MeteoraPositionResult } from '@/types/stream';
+import { ProcessingAnimation } from '../swap/swap-status';
 
 interface MeteoraPositionCardProps {
   data: {
@@ -54,6 +55,8 @@ export function MeteoraPositionCard({
   );
   const [isLoading, setIsLoading] = useState(false);
 
+  const [overlay, setOverlay] = useState(data.result?.step === 'processing' || data.result?.step === 'canceled');
+
   // Sync with incoming result changes
   useEffect(() => {
     // Only update if result exists and the token actually changed
@@ -63,6 +66,7 @@ export function MeteoraPositionCard({
       setSelectedGroup(null);
       setSelectedPair(null);
     }
+    setOverlay(data.result?.step === 'processing' || data.result?.step === 'canceled');
   }, [data.result, selectedToken?.mint]);
 
   const { data: walletPortfolio, isLoading: isLoadingPorfolio } =
@@ -144,7 +148,7 @@ export function MeteoraPositionCard({
     <Card className="overflow-hidden">
       <CardContent className="pt-6">
         {/* Token Selection Step */}
-        {data.result?.step != 'canceled' &&
+        {!overlay &&
           data.result?.step != 'token-selection' &&
           !selectedToken && (
             <>
@@ -198,7 +202,7 @@ export function MeteoraPositionCard({
           )}
 
         {/* DLMM Group Selection */}
-        {data.result?.step != 'canceled' &&
+        {!overlay &&
           selectedToken &&
           dlmmGroups &&
           !selectedGroup && (
@@ -248,7 +252,7 @@ export function MeteoraPositionCard({
           )}
 
         {/* Pool Selection */}
-        {data.result?.step != 'canceled' &&
+        {!overlay &&
           selectedToken &&
           selectedGroup &&
           !selectedPair && (
@@ -302,7 +306,7 @@ export function MeteoraPositionCard({
           )}
 
         {/* Amount Input and Pool Details */}
-        {data.result?.step != 'canceled' &&
+        {!overlay &&
           selectedToken &&
           selectedGroup &&
           selectedPair && (
@@ -412,7 +416,7 @@ export function MeteoraPositionCard({
           )}
       </CardContent>
 
-      {data.result?.step === 'canceled' && (
+      {overlay && (
         <CardContent className="space-y-1">
           <div className="flex flex-col gap-4">
             <AnimatePresence mode="wait">
@@ -433,11 +437,13 @@ export function MeteoraPositionCard({
                     }}
                     className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
                   >
-                    <X className="h-8 w-8 text-destructive" />
+                    {data.result?.step === 'canceled'
+                      ?<X className="h-8 w-8 text-destructive" />
+                      :<ProcessingAnimation />}
                   </motion.div>
 
                   <div className="space-y-1">
-                    <h3 className="text-lg font-medium">Position Canceled</h3>
+                    <h3 className="text-lg font-medium">{data.result?.step === 'canceled'? "Position Canceled": "Opening a Position"}</h3>
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
                         {selectedToken?.symbol
@@ -456,9 +462,6 @@ export function MeteoraPositionCard({
       {data.result?.step === 'awaiting-confirmation' && (
         <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
           <div className="flex items-center justify-between gap-2">
-            <Button onClick={handleCancel} variant="default">
-              Cancel
-            </Button>
             {selectedAmount &&
               selectedGroup &&
               selectedPair &&
@@ -467,6 +470,9 @@ export function MeteoraPositionCard({
                   Confirm Position
                 </Button>
               )}
+              <Button onClick={handleCancel} variant="default">
+                Cancel
+              </Button>
           </div>
           <div className="text-sm text-muted-foreground">
             Ready to open position
