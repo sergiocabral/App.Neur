@@ -76,7 +76,7 @@ export function ProcessingAnimation() {
   );
 }
 
-function CompletedAnimation() {
+export function CompletedAnimation() {
   return (
     <motion.div
       initial={{ scale: 0 }}

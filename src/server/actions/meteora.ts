@@ -77,7 +77,7 @@ export const getMeteoraDlmmForToken = cache(
       `https://dlmm-api.meteora.ag/pair/all_by_groups?limit=10&sort_key=feetvlratio&order_by=desc&include_unknown=false&hide_low_tvl=${minTvl}&hide_low_apr=true&include_token_mints=${tokenMint}`,
       {
         next: {
-          revalidate: 300, // Cache for 5 minutes
+          revalidate: 300,
         },
       },
     );
@@ -87,12 +87,13 @@ export const getMeteoraDlmmForToken = cache(
         const pairInfo = group.pairs.reduce(
           (acc: any, pair: any) => {
             return {
-              maxApr: Math.max(acc.maxApr, pair.apr),
-              totalTvl: acc.totalTvl + parseFloat(pair.liquidity),
+            maxApr: Math.max(acc.maxApr, pair.apr),
+            totalTvl: acc.totalTvl + parseFloat(pair.liquidity),
             };
           },
           { maxApr: 0, totalTvl: 0 },
         );
+
         return {
           name: group.name,
           pairs: group.pairs,
