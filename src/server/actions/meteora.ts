@@ -7,6 +7,7 @@ import { SolanaAgentKit } from 'solana-agent-kit';
 
 import { retrieveAgentKit } from './ai';
 import { performSwap } from './swap';
+import { JupiterToken, searchJupiterTokens } from './jupiter';
 
 export interface MeteoraPool {
   poolId: string;
@@ -61,6 +62,9 @@ export interface MeteoraDlmmPair {
     hour_12: number;
     hour_24: number;
   };
+  jupiterSwapRatio: number;
+  tokenXName: JupiterToken;
+  tokenYName: JupiterToken;
 }
 
 export interface MeteoraDlmmGroup {
@@ -82,27 +86,49 @@ export const getMeteoraDlmmForToken = cache(
       },
     );
     const data = await response.json();
-    return data.groups
-      .map((group: any) => {
-        const pairInfo = group.pairs.reduce(
-          (acc: any, pair: any) => {
+
+    return Promise.all(
+      data.groups.map(async (group: any) => {
+        const pairInfo = await Promise.all(
+          group.pairs.map(async (pair: any) => {
+            // Fetch token names asynchronously
+            const [tokenXName, tokenYName] = await Promise.all([
+              searchJupiterTokens(pair.mint_x),
+              searchJupiterTokens(pair.mint_y),
+            ]);
+
             return {
-            maxApr: Math.max(acc.maxApr, pair.apr),
-            totalTvl: acc.totalTvl + parseFloat(pair.liquidity),
+              ...pair,
+              jupiterSwapRatio: calculateJupiterSwapRatio(pair),
+              tokenXName: tokenXName[0], // Add token name
+              tokenYName: tokenYName[0],
             };
-          },
-          { maxApr: 0, totalTvl: 0 },
+          })
         );
 
         return {
           name: group.name,
-          pairs: group.pairs,
-          ...pairInfo,
+          pairs: pairInfo, // Use resolved pairs
+          maxApr: Math.max(...pairInfo.map((p: any) => p.apr)),
+          totalTvl: pairInfo.reduce((acc: number, p: any) => acc + parseFloat(p.liquidity), 0),
         };
       })
-      .sort((a: MeteoraDlmmGroup, b: MeteoraDlmmGroup) => b.maxApr - a.maxApr);
-  },
+    );
+  }
 );
+
+
+// Helper function to calculate Jupiter swap ratio
+function calculateJupiterSwapRatio(pair: any): number {
+    if (!pair.reserve_x_amount || !pair.reserve_y_amount) {
+        return 0;
+    }
+    
+    // Calculate price as reserveY/reserveX (following Jupiter's convention)
+    const jupiterSwapRatio = pair.reserve_y_amount / pair.reserve_x_amount;
+    
+    return jupiterSwapRatio;
+}
 
 export const openMeteoraPosition = async (
   {
