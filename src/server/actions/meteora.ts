@@ -1,7 +1,7 @@
 import { cache } from 'react';
 
 import { BN } from '@coral-xyz/anchor';
-import DLMM, { StrategyType } from '@meteora-ag/dlmm';
+import DLMM, { LbPosition, StrategyType } from '@meteora-ag/dlmm';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { SolanaAgentKit } from 'solana-agent-kit';
 
@@ -258,6 +258,415 @@ export const openMeteoraPosition = async (
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to open position',
+    };
+  }
+};
+
+
+export const getMeteoraPositions = async(
+  {
+    poolId,
+    wallet,
+  }: {
+    poolId: PublicKey;
+    wallet: PublicKey;
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  console.log("started.........................");
+  const agent =
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+
+  try {
+    console.log("trying.........................");
+    const dlmmPool = await DLMM.create(agent.connection, poolId);
+    console.log("fetching position.........................");
+    const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
+      wallet,
+    );
+    console.log("fetched position.........................");
+    console.log("positionBinData: ", userPositions[0].positionData.positionBinData);
+    console.log("publicKey: ", userPositions[0].publicKey.toString());
+    console.log("tokenXAmount: ", userPositions[0].positionData.totalXAmount);
+    console.log("tokenYAmount: ", userPositions[0].positionData.totalYAmount);
+    return {
+      success: true,
+      result: userPositions,
+    };
+  } catch (error) {
+    return{
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get positions',
+    }
+  }
+};
+
+export const closeMeteoraPositions = async(
+  {
+    poolId,
+    positon,
+  }: {
+    poolId: PublicKey;
+    positon: LbPosition;
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+
+  try {
+    const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const tnx = await dlmmPool.closePosition({
+      owner: agent.wallet.publicKey,
+      position: positon,
+    });
+
+    tnx.feePayer = agent.wallet.publicKey;
+    const positionKeypair = new Keypair();
+    const signedTx = await agent.wallet.signTransaction(tnx);
+    signedTx.partialSign(positionKeypair);
+    const signature = await agent.connection.sendRawTransaction(
+      signedTx.serialize(),
+      {
+        skipPreflight: false,
+        maxRetries: 5,
+        preflightCommitment: 'confirmed',
+      },
+    );
+
+    await agent.connection.confirmTransaction(signature);
+
+    return {
+      success: true,
+      result: {
+        signature,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to close positions',
+    };
+  }
+};
+
+export const claimRewareForOnePosition = async(
+  {
+    poolId,
+    positon,
+  }: {
+    poolId: PublicKey;
+    positon: LbPosition;
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+  try {
+    const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const tnx = await dlmmPool.claimLMReward({
+      owner: agent.wallet.publicKey,
+      position: positon,
+    })
+
+    tnx.feePayer = agent.wallet.publicKey;
+    const positionKeypair = new Keypair();
+    const signedTx = await agent.wallet.signTransaction(tnx);
+    signedTx.partialSign(positionKeypair);
+    const signature = await agent.connection.sendRawTransaction(
+      signedTx.serialize(),
+      {
+        skipPreflight: false,
+        maxRetries: 5,
+        preflightCommitment: 'confirmed',
+      },
+    );
+
+    await agent.connection.confirmTransaction(signature);
+
+    return {
+      success: true,
+      result: {
+        signature,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to close positions',
+    };
+  }
+};
+
+export const claimRewareForMultiplePositions = async(
+  {
+    poolId,
+    positions,
+  }: {
+    poolId: PublicKey;
+    positions: LbPosition[];
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+  try {
+    const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const transactions = await dlmmPool.claimAllLMRewards({
+      owner: agent.wallet.publicKey,
+      positions: positions,
+    });
+    
+    const signatures = [];
+    
+    for (const tnx of transactions) {
+      tnx.feePayer = agent.wallet.publicKey;
+      const positionKeypair = new Keypair();
+      const signedTx = await agent.wallet.signTransaction(tnx);
+      signedTx.partialSign(positionKeypair);
+      
+      const signature = await agent.connection.sendRawTransaction(
+        signedTx.serialize(),
+        {
+          skipPreflight: false,
+          maxRetries: 5,
+          preflightCommitment: 'confirmed',
+        },
+      );
+    
+      await agent.connection.confirmTransaction(signature);
+      signatures.push(signature);
+    }
+    
+    return {
+      success: true,
+      result: {
+        signatures,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to close positions',
+    };
+  }
+};
+
+export const claimSwapFee = async(
+  {
+    poolId,
+    position,
+  }: {
+    poolId: PublicKey;
+    position: LbPosition;
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+  try {
+    const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const tnx = await dlmmPool.claimSwapFee({
+      owner: agent.wallet.publicKey,
+      position: position,
+    });
+
+    tnx.feePayer = agent.wallet.publicKey;
+    const positionKeypair = new Keypair();
+    const signedTx = await agent.wallet.signTransaction(tnx);
+    signedTx.partialSign(positionKeypair);
+    const signature = await agent.connection.sendRawTransaction(
+      signedTx.serialize(),
+      {
+        skipPreflight: false,
+        maxRetries: 5,
+        preflightCommitment: 'confirmed',
+      },
+    );
+
+    await agent.connection.confirmTransaction(signature);
+    
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to close positions',
+    };
+  }
+};
+
+export const claimAllSwapFee = async(
+  {
+    poolId,
+    positions,
+  }: {
+    poolId: PublicKey;
+    positions: LbPosition[];
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+  try {
+    const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const transactions = await dlmmPool.claimAllSwapFee({
+      owner: agent.wallet.publicKey,
+      positions: positions,
+    });
+
+    const signatures = [];
+    
+    for (const tnx of transactions) {
+      tnx.feePayer = agent.wallet.publicKey;
+      const positionKeypair = new Keypair();
+      const signedTx = await agent.wallet.signTransaction(tnx);
+      signedTx.partialSign(positionKeypair);
+      
+      const signature = await agent.connection.sendRawTransaction(
+        signedTx.serialize(),
+        {
+          skipPreflight: false,
+          maxRetries: 5,
+          preflightCommitment: 'confirmed',
+        },
+      );
+    
+      await agent.connection.confirmTransaction(signature);
+      signatures.push(signature);
+    }
+    
+    return {
+      success: true,
+      result: {
+        signatures,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to close positions',
+    };
+  }
+};
+
+export const claimAllRewards = async(
+  {
+    poolId,
+    positions,
+  }: {
+    poolId: PublicKey;
+    positions: LbPosition[];
+  },
+  extraData: {
+    agentKit?: SolanaAgentKit;
+  },
+) => {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+  try {
+    const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const transactions = await dlmmPool.claimAllRewards({
+      owner: agent.wallet.publicKey,
+      positions: positions,
+    });
+    const signatures = [];
+    
+    for (const tnx of transactions) {
+      tnx.feePayer = agent.wallet.publicKey;
+      const positionKeypair = new Keypair();
+      const signedTx = await agent.wallet.signTransaction(tnx);
+      signedTx.partialSign(positionKeypair);
+      
+      const signature = await agent.connection.sendRawTransaction(
+        signedTx.serialize(),
+        {
+          skipPreflight: false,
+          maxRetries: 5,
+          preflightCommitment: 'confirmed',
+        },
+      );
+    
+      await agent.connection.confirmTransaction(signature);
+      signatures.push(signature);
+    }
+    
+    return {
+      success: true,
+      result: {
+        signatures,
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to close positions',
     };
   }
 };
