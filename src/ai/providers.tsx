@@ -5,6 +5,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { z } from 'zod';
 
 import { Card } from '@/components/ui/card';
+import { MODEL_PREFERENCE_MAP } from '@/lib/constants';
 
 import { actionTools } from './generic/action';
 import { jinaTools } from './generic/jina';
@@ -61,6 +62,13 @@ export const orchestratorModel = openai('gpt-4o-mini');
 
 const openAiModel = openai(process.env.OPENAI_MODEL_NAME || 'gpt-4o');
 
+export const defaultModel = usingAnthropic ? claude35Sonnet : openAiModel;
+
+export const getModelFromPreference = (preference?: string) => {
+  if (!preference || !MODEL_PREFERENCE_MAP[preference]) return defaultModel;
+  return openai(preference);
+};
+
 export const defaultSystemPrompt = `
 Your name is Neur (Agent).
 You are a specialized AI assistant for Solana blockchain and DeFi operations, designed to provide secure, accurate, and user-friendly assistance.
@@ -115,8 +123,6 @@ Common knowledge:
 Realtime knowledge:
 - { approximateCurrentTime: ${new Date().toISOString()}}
 `;
-
-export const defaultModel = usingAnthropic ? claude35Sonnet : openAiModel;
 
 export interface ToolConfig {
   displayName?: string;
