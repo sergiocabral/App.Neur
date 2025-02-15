@@ -378,8 +378,7 @@ export async function updateUser(data: UserUpdateData) {
     }
 
     // Revalidate user cache
-    const swrKey = `user-${privyId}`;
-    revalidateTag(swrKey);
+    revalidateTag(`user-${privyId}`);
     return { success: true };
   } catch (error) {
     console.error('Error updating user:', error);
