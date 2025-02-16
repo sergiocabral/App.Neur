@@ -271,40 +271,32 @@ export const openMeteoraPosition = async (
   }
 };
 
-export const getTokenData = async({
-  mintX,
-  mintY,
-}:{
-  mintX: string;
-  mintY: string;
-},  
-extraData: {
-  agentKit?: SolanaAgentKit;
-},
-) => {
-  const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+export interface TokenData {
+  name: string;
+  symbol: string;
+  decimals: number;
+}
 
-  if (!agent) {
-    return {
-      success: false,
-      error: 'Failed to retrieve agent',
-    };
-  }
+export const getTokenData = async({
+  mint,
+}:{
+  mint: string;
+}
+) => {
   try {
-    console.log("Started to find X and Y");
-    const tokenX = await agent.getTokenDataByAddress(mintX);
-    const tokenY = await agent.getTokenDataByAddress(mintY); 
-    return {
-      success: true,
-      result: {tokenX, tokenY},
-    };
-  } catch (error) {
-    return{
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to get token data',
+    if (!mint) {
+      throw new Error("Mint address is required");
     }
+    const response = await fetch(`https://api.jup.ag/tokens/v1/token/${mint}`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+    const token = (await response.json()) as TokenData;
+    return token;
+  } catch (error: any) {
+    throw new Error(`Error fetching token data: ${error.message}`);
   }
 }
 

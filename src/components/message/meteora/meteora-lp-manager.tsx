@@ -25,12 +25,11 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import type { MeteoraPositionUpdateResult } from '@/types/stream';
-import { getAllLbPairPositionForOwner, getMeteoraPositions, PositionWithPoolName } from '@/server/actions/meteora';
+import { getAllLbPairPositionForOwner, getMeteoraPositions, getTokenData, PositionWithPoolName, TokenData } from '@/server/actions/meteora';
 import { PublicKey } from '@solana/web3.js';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
 import { Label } from '@/components/ui/label';
-import { getTokenDataByAddress } from 'solana-agent-kit/dist/tools';
 
 interface MeteoraLpManagerProps {
   data: {
@@ -48,8 +47,8 @@ export function MeteoraLpManager({
   const [selectedPositon, setSelectedPositon] = useState<PositionWithPoolName | null>(null);
   console.log(data);
   const [walletAddress, setWalletAddress] = useState(data.result?.wallet);
-  const [tokenX, setTokenX] = useState(null);
-  const [tokenY, setTokenY] = useState(null);
+  const [tokenX, setTokenX] = useState<TokenData | undefined>(undefined);
+  const [tokenY, setTokenY] = useState<TokenData | undefined>(undefined);
 
   const { data: walletPortfolio } = useWalletPortfolio();
 
@@ -76,9 +75,22 @@ export function MeteoraLpManager({
         data.result?.step === 'canceled' ||
         data.result?.step === 'completed',
     );
-    // setTokenX(data.result?.selectTokenX);
-    // setTokenY(data.result?.selectTokenY);
   }, [data.result, data.result?.selectedPosition, selectedPositon?.position.publicKey, data.result?.positions]);
+
+  useEffect(() => {
+    if(selectedPositon?.mintX &&  selectedPositon.mintY){
+      console.log("selectedPositon int the effect", selectedPositon);
+      const fetchTokenData = async () => {
+        const tokenXData = await getTokenData({mint: selectedPositon.mintX});
+        const tokenYData = await getTokenData({mint: selectedPositon.mintY});
+        console.log("tokenXData", tokenXData);
+        console.log("tokenYData", tokenYData);
+        setTokenX(tokenXData);
+        setTokenY(tokenYData);
+      };
+      fetchTokenData();
+    }
+  }, [selectedPositon?.mintX, selectedPositon?.mintY]);
 
   const handlePositionSelect = async (Position: PositionWithPoolName) => {
     try {
@@ -189,12 +201,13 @@ export function MeteoraLpManager({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Swap Fee</Label>
-                      <div className="font-medium">
-                        TokenX Fee: {parseInt(selectedPositon.position.positionData.feeX.toString(), 16)}
-                      </div> 
-                      <div className="font-medium">
-                        TokenY Fee: {parseInt(selectedPositon.position.positionData.feeY.toString(), 16)}
+                      {tokenX && <div className="font-medium">
+                        TokenX Fee: {parseInt(selectedPositon.position.positionData.feeX.toString(), 16)/ 10 ** tokenX.decimals}
+                      </div> }
+                      {tokenY && <div className="font-medium">
+                        TokenY Fee: {parseInt(selectedPositon.position.positionData.feeY.toString(), 16)/ 10 ** tokenY.decimals}
                       </div>
+                      }
                   </div>
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Rewards</Label>
