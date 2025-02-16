@@ -2,12 +2,13 @@ import { cache } from 'react';
 
 import { BN } from '@coral-xyz/anchor';
 import DLMM, { LbPosition, StrategyType } from '@meteora-ag/dlmm';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { SolanaAgentKit } from 'solana-agent-kit';
 
 import { retrieveAgentKit } from './ai';
 import { performSwap } from './swap';
 import { JupiterToken, searchJupiterTokens } from './jupiter';
+import { string } from 'zod';
 
 export interface MeteoraPool {
   poolId: string;
@@ -73,6 +74,14 @@ export interface MeteoraDlmmGroup {
   maxApr: number;
   totalTvl: number;
 }
+
+export interface PositionWithPoolName {
+  position: LbPosition;
+  poolName: string;
+  poolAddress: string;
+  mintX: string;
+  mintY: string;
+} 
 
 export const getMeteoraDlmmForToken = cache(
   async (tokenMint: string): Promise<MeteoraDlmmGroup[]> => {
@@ -262,23 +271,58 @@ export const openMeteoraPosition = async (
   }
 };
 
+export const getTokenData = async({
+  mintX,
+  mintY,
+}:{
+  mintX: string;
+  mintY: string;
+},  
+extraData: {
+  agentKit?: SolanaAgentKit;
+},
+) => {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    return {
+      success: false,
+      error: 'Failed to retrieve agent',
+    };
+  }
+  try {
+    console.log("Started to find X and Y");
+    const tokenX = await agent.getTokenDataByAddress(mintX);
+    const tokenY = await agent.getTokenDataByAddress(mintY); 
+    return {
+      success: true,
+      result: {tokenX, tokenY},
+    };
+  } catch (error) {
+    return{
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to get token data',
+    }
+  }
+}
 
 export const getMeteoraPositions = async(
   {
-    poolId,
+    poolIds,
     wallet,
   }: {
-    poolId: PublicKey;
+    poolIds: PublicKey[];
     wallet: PublicKey;
   },
   extraData: {
     agentKit?: SolanaAgentKit;
   },
 ) => {
-  console.log("started.........................");
   const agent =
-    extraData.agentKit ??
-    (await retrieveAgentKit(undefined))?.data?.data?.agent;
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
   if (!agent) {
     return {
@@ -287,21 +331,33 @@ export const getMeteoraPositions = async(
     };
   }
 
+  console.log("You are being called with pollIds: ",poolIds);
+  const connection = agent.connection;
+
   try {
-    console.log("trying.........................");
-    const dlmmPool = await DLMM.create(agent.connection, poolId);
-    console.log("fetching position.........................");
-    const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
-      wallet,
-    );
-    console.log("fetched position.........................");
-    console.log("positionBinData: ", userPositions[0].positionData.positionBinData);
-    console.log("publicKey: ", userPositions[0].publicKey.toString());
-    console.log("tokenXAmount: ", userPositions[0].positionData.totalXAmount);
-    console.log("tokenYAmount: ", userPositions[0].positionData.totalYAmount);
+    console.log("Started the fetching.................!");
+    let AllPositions: PositionWithPoolName[] = [];
+    for(const poolId of poolIds){
+      const dlmmPool = await DLMM.create(connection, poolId);
+      const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
+        wallet,
+      );
+      const apiCall = await fetch(`https://dlmm-api.meteora.ag/pair/${poolId}`);
+      const poolData = await apiCall.json();
+      const details = userPositions.map((position) => {
+        return {
+          position,
+          poolName: poolData.name,
+          poolAddress: poolId.toBase58(),
+          mintX: poolData.mint_x,
+          mintY: poolData.mint_y
+        }
+      });
+      AllPositions = AllPositions.concat(details);
+    }
     return {
       success: true,
-      result: userPositions,
+      result: AllPositions,
     };
   } catch (error) {
     return{
@@ -314,10 +370,10 @@ export const getMeteoraPositions = async(
 export const closeMeteoraPositions = async(
   {
     poolId,
-    positon,
+    position,
   }: {
     poolId: PublicKey;
-    positon: LbPosition;
+    position: LbPosition;
   },
   extraData: {
     agentKit?: SolanaAgentKit;
@@ -338,7 +394,7 @@ export const closeMeteoraPositions = async(
     const dlmmPool = await DLMM.create(agent.connection, poolId);
     const tnx = await dlmmPool.closePosition({
       owner: agent.wallet.publicKey,
-      position: positon,
+      position: position,
     });
 
     tnx.feePayer = agent.wallet.publicKey;
@@ -373,10 +429,10 @@ export const closeMeteoraPositions = async(
 export const claimRewareForOnePosition = async(
   {
     poolId,
-    positon,
+    position,
   }: {
     poolId: PublicKey;
-    positon: LbPosition;
+    position: LbPosition;
   },
   extraData: {
     agentKit?: SolanaAgentKit;
@@ -396,7 +452,7 @@ export const claimRewareForOnePosition = async(
     const dlmmPool = await DLMM.create(agent.connection, poolId);
     const tnx = await dlmmPool.claimLMReward({
       owner: agent.wallet.publicKey,
-      position: positon,
+      position: position,
     })
 
     tnx.feePayer = agent.wallet.publicKey;
@@ -418,70 +474,6 @@ export const claimRewareForOnePosition = async(
       success: true,
       result: {
         signature,
-      },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to close positions',
-    };
-  }
-};
-
-export const claimRewareForMultiplePositions = async(
-  {
-    poolId,
-    positions,
-  }: {
-    poolId: PublicKey;
-    positions: LbPosition[];
-  },
-  extraData: {
-    agentKit?: SolanaAgentKit;
-  },
-) => {
-  const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
-
-  if (!agent) {
-    return {
-      success: false,
-      error: 'Failed to retrieve agent',
-    };
-  }
-  try {
-    const dlmmPool = await DLMM.create(agent.connection, poolId);
-    const transactions = await dlmmPool.claimAllLMRewards({
-      owner: agent.wallet.publicKey,
-      positions: positions,
-    });
-    
-    const signatures = [];
-    
-    for (const tnx of transactions) {
-      tnx.feePayer = agent.wallet.publicKey;
-      const positionKeypair = new Keypair();
-      const signedTx = await agent.wallet.signTransaction(tnx);
-      signedTx.partialSign(positionKeypair);
-      
-      const signature = await agent.connection.sendRawTransaction(
-        signedTx.serialize(),
-        {
-          skipPreflight: false,
-          maxRetries: 5,
-          preflightCommitment: 'confirmed',
-        },
-      );
-    
-      await agent.connection.confirmTransaction(signature);
-      signatures.push(signature);
-    }
-    
-    return {
-      success: true,
-      result: {
-        signatures,
       },
     };
   } catch (error) {
@@ -536,68 +528,10 @@ export const claimSwapFee = async(
 
     await agent.connection.confirmTransaction(signature);
     
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to close positions',
-    };
-  }
-};
-
-export const claimAllSwapFee = async(
-  {
-    poolId,
-    positions,
-  }: {
-    poolId: PublicKey;
-    positions: LbPosition[];
-  },
-  extraData: {
-    agentKit?: SolanaAgentKit;
-  },
-) => {
-  const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
-
-  if (!agent) {
-    return {
-      success: false,
-      error: 'Failed to retrieve agent',
-    };
-  }
-  try {
-    const dlmmPool = await DLMM.create(agent.connection, poolId);
-    const transactions = await dlmmPool.claimAllSwapFee({
-      owner: agent.wallet.publicKey,
-      positions: positions,
-    });
-
-    const signatures = [];
-    
-    for (const tnx of transactions) {
-      tnx.feePayer = agent.wallet.publicKey;
-      const positionKeypair = new Keypair();
-      const signedTx = await agent.wallet.signTransaction(tnx);
-      signedTx.partialSign(positionKeypair);
-      
-      const signature = await agent.connection.sendRawTransaction(
-        signedTx.serialize(),
-        {
-          skipPreflight: false,
-          maxRetries: 5,
-          preflightCommitment: 'confirmed',
-        },
-      );
-    
-      await agent.connection.confirmTransaction(signature);
-      signatures.push(signature);
-    }
-    
     return {
       success: true,
       result: {
-        signatures,
+        signature,
       },
     };
   } catch (error) {
@@ -608,65 +542,138 @@ export const claimAllSwapFee = async(
   }
 };
 
-export const claimAllRewards = async(
-  {
-    poolId,
-    positions,
-  }: {
-    poolId: PublicKey;
-    positions: LbPosition[];
-  },
-  extraData: {
-    agentKit?: SolanaAgentKit;
-  },
-) => {
-  const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
-
-  if (!agent) {
-    return {
-      success: false,
-      error: 'Failed to retrieve agent',
-    };
-  }
-  try {
-    const dlmmPool = await DLMM.create(agent.connection, poolId);
-    const transactions = await dlmmPool.claimAllRewards({
-      owner: agent.wallet.publicKey,
-      positions: positions,
-    });
-    const signatures = [];
-    
-    for (const tnx of transactions) {
-      tnx.feePayer = agent.wallet.publicKey;
-      const positionKeypair = new Keypair();
-      const signedTx = await agent.wallet.signTransaction(tnx);
-      signedTx.partialSign(positionKeypair);
-      
-      const signature = await agent.connection.sendRawTransaction(
-        signedTx.serialize(),
-        {
-          skipPreflight: false,
-          maxRetries: 5,
-          preflightCommitment: 'confirmed',
-        },
-      );
-    
-      await agent.connection.confirmTransaction(signature);
-      signatures.push(signature);
+export async function getAllLbPairPositionForOwner(ownerAddress: string) {
+	const SHYFT_API_KEY = process.env.SHYFT_API_KEY;
+const operationsDoc = `
+    query MyQuery {
+      meteora_dlmm_PositionV2(
+        where: {owner: {_eq: ${JSON.stringify(ownerAddress)}}}
+      ) {
+        upperBinId
+        lowerBinId
+        totalClaimedFeeYAmount
+        totalClaimedFeeXAmount
+        lastUpdatedAt
+        lbPair
+        owner
+      }
+      meteora_dlmm_Position(
+        where: {owner: {_eq: ${JSON.stringify(ownerAddress)}}}
+      ) {
+        lastUpdatedAt
+        lbPair
+        lowerBinId
+        upperBinId
+        totalClaimedFeeYAmount
+        totalClaimedFeeXAmount
+        owner
+      }
     }
-    
-    return {
-      success: true,
-      result: {
-        signatures,
-      },
-    };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to close positions',
-    };
+`; //you can cherrypick the fields as per your requirement
+  const result = await fetch(
+    `https://programs.shyft.to/v0/graphql/accounts?api_key=${SHYFT_API_KEY}&network=mainnet-beta`, //SHYFT's GQL endpoint
+    {
+      method: "POST",
+      body: JSON.stringify({
+        query: operationsDoc,
+        variables: {},
+        operationName: "MyQuery",
+      }),
+    }
+  );
+
+  const { errors, data } = await result.json();
+
+  console.log("Here's the data: ", data)
+  if (data.meteora_dlmm_Position.length > 0) {
+    for (let index = 0; index < data.meteora_dlmm_Position.length; index++) {
+      const position = data.meteora_dlmm_Position[index];
+
+      //get all Lb pair details for the position
+      const LbPairDetails = await fetch(
+        `https://programs.shyft.to/v0/graphql/accounts?api_key=${SHYFT_API_KEY}&network=mainnet-beta`, //SHYFT's GQL endpoint
+        {
+          method: "POST",
+          body: JSON.stringify({
+            query: `
+		query MyQuery {
+		meteora_dlmm_LbPair(where: {pubkey: {_eq: ${JSON.stringify(position.lbPair)}}}
+		) {
+			pubkey
+			oracle
+			pairType
+			reserveX
+			reserveY
+			status
+			tokenXMint
+			tokenYMint
+		}
+	}
+`, //querying the LB pair details
+          variables: {},
+          operationName: "MyQuery",
+          }),
+        }
+      );
+      const LBPairResponse = await LbPairDetails.json();
+
+      console.log({
+        owner: position.owner,
+        lbPair: position.lbPair,
+        lowerBindId: position.lowerBinId,
+        upperBinId: position.upperBinId,
+        lbPairDetails: LBPairResponse.data.meteora_dlmm_LbPair[0],
+      });
+      //adding a delay of 2 seconds to avoid rate limiting, only for free API Keys.
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
   }
-};
+  let allLbPairs: PublicKey[] = [];
+  
+  if (data.meteora_dlmm_PositionV2.length > 0) {
+    for (let index = 0; index < data.meteora_dlmm_PositionV2.length; index++) {
+      const position = data.meteora_dlmm_PositionV2[index];
+
+      //get all Lb pair details for the positionV2
+      const LbPairDetails = await fetch(
+        `https://programs.shyft.to/v0/graphql/accounts?api_key=${SHYFT_API_KEY}&network=mainnet-beta`, //SHYFT's GQL endpoint
+        {
+          method: "POST",
+          body: JSON.stringify({
+            query: `
+		query MyQuery {
+		    meteora_dlmm_LbPair(
+	              where: {pubkey: {_eq: ${JSON.stringify(position.lbPair)}}}
+		  ) {
+		      pubkey
+		      oracle
+		      pairType
+		      reserveX
+		      reserveY
+		      status
+		      tokenXMint
+		      tokenYMint
+		     }
+		}
+	    `, //querying the LB pair details
+            variables: {},
+            operationName: "MyQuery",
+          }),
+        }
+      );
+      const LBPairResponse = await LbPairDetails.json();
+
+      console.log({
+        owner: position.owner,
+        lbPair: position.lbPair,
+        lowerBindId: position.lowerBinId,
+        upperBinId: position.upperBinId,
+        lbPairDetails: LBPairResponse.data.meteora_dlmm_LbPair[0],
+      });
+      allLbPairs.push(new PublicKey(position.lbPair));
+      //adding a delay of 2 seconds to avoid rate limiting, only for free API Keys.
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+  }
+  return allLbPairs;
+}

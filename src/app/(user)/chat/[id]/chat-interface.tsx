@@ -63,6 +63,7 @@ import { DataStreamDelta } from '@/types/stream';
 import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { ConversationInput } from '../../home/conversation-input';
+import { MeteoraLpManager } from '@/components/message/meteora/meteora-lp-manager';
 
 const TOOL_COMPONENTS: Record<
   string,
@@ -95,6 +96,10 @@ const TOOL_COMPONENTS: Record<
     component: MeteoraPositionCard,
     displayName: '💧 Open Meteora LP',
   },
+  manageMeteoraLiquidityPositions: {
+    component: MeteoraLpManager,
+    displayName: '💧 Manage Meteora LPs',
+  }
 };
 
 // Types

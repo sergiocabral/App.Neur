@@ -16,6 +16,7 @@ import { allSolanaTools } from './solana';
 import { swapTokens } from './swap';
 import { allTelegramTools, sendTelegramNotification } from './telegram';
 import { transferTokens } from './transfer';
+import { meteoraLp } from './manage-meteora-lp';
 
 interface ToolMetadata {
   description: string;
@@ -48,6 +49,7 @@ export const allTools: Record<string, ToolConfig> = {
   launchPumpFun: launchPumpFun(),
   createAction: createAction(),
   openMeteoraLiquidityPosition: meteoraPosition(),
+  manageMeteoraLiquidityPositions: meteoraLp(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,

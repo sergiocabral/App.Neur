@@ -1,4 +1,5 @@
-import { MeteoraPool } from '@/server/actions/meteora';
+import { MeteoraPool, PositionWithPoolName } from '@/server/actions/meteora';
+import { z } from 'zod';
 
 export interface TokenInfo {
   symbol?: string;
@@ -107,6 +108,23 @@ export interface MeteoraPositionResult {
   error?: string;
 }
 
+export interface MeteoraPositionUpdateResult {
+  step?:
+    | 'position-selection'
+    | 'perform-action'
+    | 'awaiting-confirmation'
+    | 'confirmed'
+    | 'processing'
+    | 'completed'
+    | 'canceled';
+  positions?: PositionWithPoolName[];
+  selectedPosition?: PositionWithPoolName;
+  action?: 'close' | 'claimLMReward' | 'claimSwapFee';
+  wallet?: string;
+  signature?: string;
+  error?: string;
+}
+
 export interface ToolDataStream {
   type: 'stream-result-data';
   status?: 'streaming' | 'idle' | 'completed' | undefined;
@@ -116,7 +134,8 @@ export interface ToolDataStream {
     | CreateActionDataResult
     | LaunchPumpfunResult
     | TransferDataResult
-    | MeteoraPositionResult;
+    | MeteoraPositionResult
+    |MeteoraPositionUpdateResult;
 }
 
 export type DataStreamDelta = ToolDataStream;
