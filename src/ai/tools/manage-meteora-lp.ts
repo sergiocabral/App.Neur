@@ -28,9 +28,6 @@ export const meteoraLp = (): ToolConfig => {
     description:
       'Tool for managing Meteora LP positions - enter pools, view positions, withdraw liquidity',
     parameters: z.object({
-      wallet: z
-        .string()
-        .describe('Public key of the wallet to check LP positions for'),
       message: z
         .string()
         .optional()
@@ -54,29 +51,25 @@ export const meteoraLp = (): ToolConfig => {
   }: WrappedToolProps) =>
     tool({
       ...metadata,
-      execute: async ({ wallet, message }, { toolCallId }) => {
-        console.log('wallet', wallet);
+      execute: async ({ message }, { toolCallId }) => {
         console.log('message', message);
         const updatedToolCall: {
           toolCallId: string;
           status: 'streaming' | 'idle';
           step: string;
           selectedPosition?: PositionWithPoolName | null;
-          wallet?: string;
           positions?: PositionWithPoolName[];
+          action?: 'close' | 'claimLMReward' | 'claimSwapFee';
         } = {
           toolCallId,
           status: 'streaming',
           step: 'position-selection',
-          wallet,
         };
 
-        const allPairs = await getAllLbPairPositionForOwner(wallet);
-        console.log('allPairs ', allPairs);
+        const allPairs = await getAllLbPairPositionForOwner({ agentKit });
         const positions = await getMeteoraPositions(
           {
             poolIds: allPairs,
-            wallet: new PublicKey(wallet),
           },
           { agentKit },
         );
@@ -99,8 +92,8 @@ export const meteoraLp = (): ToolConfig => {
             toolCallId,
             content: {
               step: 'position-selection',
-              wallet,
               positions: updatedToolCall.positions,
+              action: updatedToolCall.action,
             },
           },
         });
@@ -158,23 +151,51 @@ export const meteoraLp = (): ToolConfig => {
 
         if (originalToolCall && originalToolCall.selectedPosition) {
           console.log('originalToolCall', originalToolCall);
-          const selectedPosition  = {
+          const selectedPosition = {
             position: {
-              publicKey: new PublicKey(originalToolCall.selectedPosition.positon.publicKey),
+              publicKey: new PublicKey(
+                originalToolCall.selectedPosition.positon.publicKey,
+              ),
               positionData: {
-                totalXAmount: originalToolCall.selectedPosition.positon.positionData.totalXAmount,
-                totalYAmount: originalToolCall.selectedPosition.positon.positionData.totalYAmount,
-                positionBinData: originalToolCall.selectedPosition.positon.positionData.positionBinData,
-                lastUpdatedAt: new BN(originalToolCall.selectedPosition.positon.positionData.lastUpdatedAt),
-                upperBinId: originalToolCall.selectedPosition.positon.positionData.upperBinId,
-                lowerBinId: originalToolCall.selectedPosition.positon.positionData.lowerBinId,
-                feeX: new BN(originalToolCall.selectedPosition.positon.positionData.feeX),
-                feeY: new BN(originalToolCall.selectedPosition.positon.positionData.feeY),
-                rewardOne: new BN(originalToolCall.selectedPosition.positon.positionData.rewardOne),
-                rewardTwo: new BN(originalToolCall.selectedPosition.positon.positionData.rewardTwo),
-                feeOwner: new PublicKey(originalToolCall.selectedPosition.positon.positionData.feeOwner),
-                totalClaimedFeeXAmount: new BN(originalToolCall.selectedPosition.positon.positionData.totalClaimedFeeXAmount),
-                totalClaimedFeeYAmount: new BN(originalToolCall.selectedPosition.positon.positionData.totalClaimedFeeYAmount)
+                totalXAmount:
+                  originalToolCall.selectedPosition.positon.positionData
+                    .totalXAmount,
+                totalYAmount:
+                  originalToolCall.selectedPosition.positon.positionData
+                    .totalYAmount,
+                positionBinData:
+                  originalToolCall.selectedPosition.positon.positionData
+                    .positionBinData,
+                lastUpdatedAt: new BN(
+                  originalToolCall.selectedPosition.positon.positionData.lastUpdatedAt,
+                ),
+                upperBinId:
+                  originalToolCall.selectedPosition.positon.positionData
+                    .upperBinId,
+                lowerBinId:
+                  originalToolCall.selectedPosition.positon.positionData
+                    .lowerBinId,
+                feeX: new BN(
+                  originalToolCall.selectedPosition.positon.positionData.feeX,
+                ),
+                feeY: new BN(
+                  originalToolCall.selectedPosition.positon.positionData.feeY,
+                ),
+                rewardOne: new BN(
+                  originalToolCall.selectedPosition.positon.positionData.rewardOne,
+                ),
+                rewardTwo: new BN(
+                  originalToolCall.selectedPosition.positon.positionData.rewardTwo,
+                ),
+                feeOwner: new PublicKey(
+                  originalToolCall.selectedPosition.positon.positionData.feeOwner,
+                ),
+                totalClaimedFeeXAmount: new BN(
+                  originalToolCall.selectedPosition.positon.positionData.totalClaimedFeeXAmount,
+                ),
+                totalClaimedFeeYAmount: new BN(
+                  originalToolCall.selectedPosition.positon.positionData.totalClaimedFeeYAmount,
+                ),
               },
               version: originalToolCall.selectedPosition.positon.version,
             },
@@ -182,8 +203,11 @@ export const meteoraLp = (): ToolConfig => {
             poolAddress: originalToolCall.selectedPosition.poolAddress,
             mintX: originalToolCall.selectedPosition.mintX,
             mintY: originalToolCall.selectedPosition.mintY,
-          }
+          };
           updatedToolCall.selectedPosition = selectedPosition;
+          if (originalToolCall.action) {
+            updatedToolCall.action = originalToolCall.action;
+          }
           streamUpdate({
             stream: dataStream,
             update: {
@@ -192,88 +216,19 @@ export const meteoraLp = (): ToolConfig => {
               toolCallId,
               content: {
                 selectedPosition: updatedToolCall.selectedPosition ?? undefined,
-                wallet,
               },
             },
           });
-
-          if (
-            originalToolCall.selectedPosition &&
-            originalToolCall.action &&
-            !askForConfirmation
-          ) {
-            let result: {
-              success: boolean;
-              error?: string;
-              result?: {
-                signature: string;
-              };
-            } = {
-              success: false,
-              error: 'No action executed to manage meteora lp position',
-            };
-
-            if (originalToolCall.action === 'close') {
-              result = await closeMeteoraPositions(
-                {
-                  poolId: new PublicKey(
-                    originalToolCall.selectedPosition.positon.publicKey,
-                  ),
-                  position: selectedPosition.position,
-                },
-                { agentKit },
-              );
-            }
-
-            if (originalToolCall.action === 'claimLMReward') {
-              result = await claimRewareForOnePosition(
-                {
-                  poolId: new PublicKey(
-                    originalToolCall.selectedPosition.positon.publicKey,
-                  ),
-                  position: selectedPosition.position,
-                },
-                { agentKit },
-              );
-            }
-
-            if (originalToolCall.action === 'claimSwapFee') {
-              result = await claimSwapFee(
-                {
-                  poolId: new PublicKey(
-                    originalToolCall.selectedPosition.positon.publicKey,
-                  ),
-                  position: selectedPosition.position,
-                },
-                { agentKit },
-              );
-            }
-
-            if (!result.success || !result.result?.signature) {
-              return {
-                success: false,
-                error: result.error,
-              };
-            }
-            return {
-              success: true,
-              noFollowUp: true,
-              result: {
-                ...updatedToolCall,
-                signature: result.result.signature,
-                action: originalToolCall.action,
-                step: 'completed',
-              },
-            };
-          }
         }
 
         return {
           success: true,
           noFollowUp: true,
           result: {
-            ...updatedToolCall,
             step: 'awaiting-confirmation',
+            positions: updatedToolCall.positions,
+            selectedPosition: updatedToolCall.selectedPosition,
+            action: updatedToolCall.action
           },
         };
       },
@@ -293,33 +248,63 @@ export const meteoraLp = (): ToolConfig => {
       }
 
       if (action === 'claimSwapFee') {
-        return await claimSwapFee(
+        const result = await claimSwapFee(
           {
             poolId: new PublicKey(selectedPosition.poolAddress),
             position: selectedPosition.position,
           },
           extraData,
         );
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            ...result,
+            signature: result.result?.signature,
+            action: action,
+            step: 'completed',
+          },
+        };
       }
 
       if (action === 'claimLMReward') {
-        return await claimRewareForOnePosition(
+        const result = await claimRewareForOnePosition(
           {
             poolId: new PublicKey(selectedPosition.poolAddress),
             position: selectedPosition.position,
           },
           extraData,
         );
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            ...result,
+            signature: result.result?.signature,
+            action: action,
+            step: 'completed',
+          },
+        };
       }
 
       if (action === 'close') {
-        return await closeMeteoraPositions(
+        const result = await closeMeteoraPositions(
           {
             poolId: new PublicKey(selectedPosition.poolAddress),
             position: selectedPosition.position,
           },
           extraData,
         );
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            ...result,
+            signature: result.result?.signature,
+            action: action,
+            step: 'completed',
+          },
+        };
       }
 
       return {

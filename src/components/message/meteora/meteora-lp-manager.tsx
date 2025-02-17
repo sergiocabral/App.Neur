@@ -30,6 +30,7 @@ import { PublicKey } from '@solana/web3.js';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 interface MeteoraLpManagerProps {
   data: {
@@ -46,7 +47,6 @@ export function MeteoraLpManager({
 }: MeteoraLpManagerProps) {
   const [selectedPositon, setSelectedPositon] = useState<PositionWithPoolName | null>(null);
   console.log(data);
-  const [walletAddress, setWalletAddress] = useState(data.result?.wallet);
   const [tokenX, setTokenX] = useState<TokenData | undefined>(undefined);
   const [tokenY, setTokenY] = useState<TokenData | undefined>(undefined);
 
@@ -99,6 +99,7 @@ export function MeteoraLpManager({
       await addToolResult({
         step: data.result?.step || 'awaiting-confirmation',
         selectedPosition: Position,
+        action: data.result?.action,
       });
     } finally {
       setIsLoading(false);
@@ -346,12 +347,20 @@ export function MeteoraLpManager({
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
                       <span className="font-medium">
-                        Successfully {action === 'close' ? 'closed the position' : (action === 'claimLMReward' ? 'claimed your rewards' : 'claimed your swap fee')}
+                        Success
                       </span>
                       </span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
-                        Position Address: {selectedPositon?.position.publicKey.toString().slice(0, 8)}...{selectedPositon?.position.publicKey.toString().slice(-8)}                    
+                        Signature:  {" "}
+                        <Link 
+                          href={`https://solscan.io/tx/${data.result.signature}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          {data.result.signature?.toString().slice(0, 8)}...{data.result.signature?.toString().slice(-8)}
+                        </Link>                 
                       </span>
                     </div>
                   </div>

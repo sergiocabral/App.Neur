@@ -303,10 +303,8 @@ export const getTokenData = async({
 export const getMeteoraPositions = async(
   {
     poolIds,
-    wallet,
   }: {
     poolIds: PublicKey[];
-    wallet: PublicKey;
   },
   extraData: {
     agentKit?: SolanaAgentKit;
@@ -332,7 +330,7 @@ export const getMeteoraPositions = async(
     for(const poolId of poolIds){
       const dlmmPool = await DLMM.create(connection, poolId);
       const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
-        wallet,
+        agent.wallet.publicKey,
       );
       const apiCall = await fetch(`https://dlmm-api.meteora.ag/pair/${poolId}`);
       const poolData = await apiCall.json();
@@ -385,19 +383,23 @@ export const closeMeteoraPositions = async(
   try {
     const dlmmPool = await DLMM.create(agent.connection, poolId);
     const pos = await dlmmPool.getPosition(position.publicKey);
-    // First remove all liquidity
+    
+    if(pos.positionData.feeX.gt(new BN(0)) || pos.positionData.feeY.gt(new BN(0))){
+      await claimSwapFee({poolId, position: pos}, {agentKit: agent});
+    }
     const binsArray = pos.positionData.positionBinData.map((bin) => bin.binId);
     const removeLiquidityTx = await dlmmPool.removeLiquidity({
       user: agent.wallet.publicKey,
       binIds: binsArray,
       bps: new BN(100 * 100),
       position: pos.publicKey,
-      shouldClaimAndClose: false,
+      shouldClaimAndClose: true,
     });
 
     if (Array.isArray(removeLiquidityTx)) {
       throw new Error('Unexpected array of transactions');
     }
+
     const signature = await agent.wallet.signTransaction(removeLiquidityTx);
     const removeLiquiditySignature = await agent.connection.sendRawTransaction(signature.serialize(), {
       skipPreflight: false,
@@ -405,30 +407,11 @@ export const closeMeteoraPositions = async(
       preflightCommitment: 'confirmed',
     });
     await agent.connection.confirmTransaction(removeLiquiditySignature);
-    // Now close the empty position
-    
-    const closeTx = await dlmmPool.closePosition({
-      owner: agent.wallet.publicKey,
-      position: pos,
-    });
-
-    closeTx.feePayer = agent.wallet.publicKey;
-    const signedCloseTx = await agent.wallet.signTransaction(closeTx);
-    const closeSignature = await agent.connection.sendRawTransaction(
-      signedCloseTx.serialize(),
-      {
-        skipPreflight: false,
-        maxRetries: 5,
-        preflightCommitment: 'confirmed',
-      },
-    );
-
-    await agent.connection.confirmTransaction(closeSignature);
 
     return {
       success: true,
       result: {
-        signature: closeSignature,
+        signature: removeLiquiditySignature,
       },
     };
   } catch (error) {
@@ -560,7 +543,18 @@ export const claimSwapFee = async(
   }
 };
 
-export async function getAllLbPairPositionForOwner(ownerAddress: string) {
+export async function getAllLbPairPositionForOwner(  
+extraData: {
+  agentKit?: SolanaAgentKit;
+}) {
+  const agent =
+  extraData.agentKit ??
+  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+  if (!agent) {
+    throw new Error("Failed to retrieve agent");
+  }
+  const ownerAddress = agent.wallet.publicKey.toBase58();
 	const SHYFT_API_KEY = process.env.SHYFT_API_KEY;
 const operationsDoc = `
     query MyQuery {

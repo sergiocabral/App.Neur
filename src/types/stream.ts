@@ -120,7 +120,6 @@ export interface MeteoraPositionUpdateResult {
   positions?: PositionWithPoolName[];
   selectedPosition?: PositionWithPoolName;
   action?: 'close' | 'claimLMReward' | 'claimSwapFee';
-  wallet?: string;
   signature?: string;
   error?: string;
 }
