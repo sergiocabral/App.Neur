@@ -1,27 +1,20 @@
 import { BN } from '@coral-xyz/anchor';
-import { token } from '@coral-xyz/anchor/dist/cjs/utils';
-import { LbPosition } from '@meteora-ag/dlmm';
 import { PublicKey } from '@solana/web3.js';
-import { Output, generateObject, streamText, tool } from 'ai';
-import { symbol, z } from 'zod';
+import { generateObject, tool } from 'ai';
+import { z } from 'zod';
 
-import { diffObjects, streamUpdate } from '@/lib/utils';
+import { streamUpdate } from '@/lib/utils';
 import {
-  MeteoraPool,
   PositionWithPoolName,
   claimRewareForOnePosition,
   claimSwapFee,
   closeMeteoraPositions,
   getAllLbPairPositionForOwner,
   getMeteoraPositions,
-  getTokenData,
-  openMeteoraPosition,
 } from '@/server/actions/meteora';
-import { MeteoraPositionResult, Token } from '@/types/stream';
 
 import { ToolConfig, WrappedToolProps } from '.';
 import { openai } from '../providers';
-import { searchForToken } from './search-token';
 
 export const meteoraLp = (): ToolConfig => {
   const metadata = {
@@ -228,7 +221,7 @@ export const meteoraLp = (): ToolConfig => {
             step: 'awaiting-confirmation',
             positions: updatedToolCall.positions,
             selectedPosition: updatedToolCall.selectedPosition,
-            action: updatedToolCall.action
+            action: updatedToolCall.action,
           },
         };
       },

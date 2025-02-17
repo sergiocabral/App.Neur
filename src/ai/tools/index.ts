@@ -10,13 +10,13 @@ import { allDexscreenerTools } from './dexscreener';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
+import { meteoraLp } from './manage-meteora-lp';
 import { meteoraPosition } from './meteora';
 import { allSearchTokenTools, searchTokenByName } from './search-token';
 import { allSolanaTools } from './solana';
 import { swapTokens } from './swap';
 import { allTelegramTools, sendTelegramNotification } from './telegram';
 import { transferTokens } from './transfer';
-import { meteoraLp } from './manage-meteora-lp';
 
 interface ToolMetadata {
   description: string;

@@ -4,11 +4,11 @@ import { BN } from '@coral-xyz/anchor';
 import DLMM, { LbPosition, StrategyType } from '@meteora-ag/dlmm';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { SolanaAgentKit } from 'solana-agent-kit';
+import { string } from 'zod';
 
 import { retrieveAgentKit } from './ai';
-import { performSwap } from './swap';
 import { JupiterToken, searchJupiterTokens } from './jupiter';
-import { string } from 'zod';
+import { performSwap } from './swap';
 
 export interface MeteoraPool {
   poolId: string;
@@ -81,7 +81,7 @@ export interface PositionWithPoolName {
   poolAddress: string;
   mintX: string;
   mintY: string;
-} 
+}
 
 export const getMeteoraDlmmForToken = cache(
   async (tokenMint: string): Promise<MeteoraDlmmGroup[]> => {
@@ -112,31 +112,33 @@ export const getMeteoraDlmmForToken = cache(
               tokenXName: tokenXName[0], // Add token name
               tokenYName: tokenYName[0],
             };
-          })
+          }),
         );
 
         return {
           name: group.name,
           pairs: pairInfo, // Use resolved pairs
           maxApr: Math.max(...pairInfo.map((p: any) => p.apr)),
-          totalTvl: pairInfo.reduce((acc: number, p: any) => acc + parseFloat(p.liquidity), 0),
+          totalTvl: pairInfo.reduce(
+            (acc: number, p: any) => acc + parseFloat(p.liquidity),
+            0,
+          ),
         };
-      })
+      }),
     );
-  }
+  },
 );
-
 
 // Helper function to calculate Jupiter swap ratio
 function calculateJupiterSwapRatio(pair: any): number {
-    if (!pair.reserve_x_amount || !pair.reserve_y_amount) {
-        return 0;
-    }
-    
-    // Calculate price as reserveY/reserveX (following Jupiter's convention)
-    const jupiterSwapRatio = pair.reserve_y_amount / pair.reserve_x_amount;
-    
-    return jupiterSwapRatio;
+  if (!pair.reserve_x_amount || !pair.reserve_y_amount) {
+    return 0;
+  }
+
+  // Calculate price as reserveY/reserveX (following Jupiter's convention)
+  const jupiterSwapRatio = pair.reserve_y_amount / pair.reserve_x_amount;
+
+  return jupiterSwapRatio;
 }
 
 export const openMeteoraPosition = async (
@@ -278,32 +280,27 @@ export interface TokenData {
   price?: number;
 }
 
-export const getTokenData = async({
-  mint,
-}:{
-  mint: string;
-}
-) => {
+export const getTokenData = async ({ mint }: { mint: string }) => {
   try {
     if (!mint) {
-      throw new Error("Mint address is required");
+      throw new Error('Mint address is required');
     }
     const response = await fetch(`https://api.jup.ag/tokens/v1/token/${mint}`, {
-      method: "GET",
+      method: 'GET',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
     });
-    const price = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`)
+    const price = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`);
     const token = (await response.json()) as TokenData;
     token.price = (await price.json()).data[mint].price;
     return token;
   } catch (error: any) {
     throw new Error(`Error fetching token data: ${error.message}`);
   }
-}
+};
 
-export const getMeteoraPositions = async(
+export const getMeteoraPositions = async (
   {
     poolIds,
   }: {
@@ -314,8 +311,8 @@ export const getMeteoraPositions = async(
   },
 ) => {
   const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
   if (!agent) {
     return {
@@ -324,13 +321,13 @@ export const getMeteoraPositions = async(
     };
   }
 
-  console.log("You are being called with pollIds: ",poolIds);
+  console.log('You are being called with pollIds: ', poolIds);
   const connection = agent.connection;
 
   try {
-    console.log("Started the fetching.................!");
+    console.log('Started the fetching.................!');
     let AllPositions: PositionWithPoolName[] = [];
-    for(const poolId of poolIds){
+    for (const poolId of poolIds) {
       const dlmmPool = await DLMM.create(connection, poolId);
       const { userPositions } = await dlmmPool.getPositionsByUserAndLbPair(
         agent.wallet.publicKey,
@@ -343,8 +340,8 @@ export const getMeteoraPositions = async(
           poolName: poolData.name,
           poolAddress: poolId.toBase58(),
           mintX: poolData.mint_x,
-          mintY: poolData.mint_y
-        }
+          mintY: poolData.mint_y,
+        };
       });
       AllPositions = AllPositions.concat(details);
     }
@@ -353,14 +350,14 @@ export const getMeteoraPositions = async(
       result: AllPositions,
     };
   } catch (error) {
-    return{
+    return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to get positions',
-    }
+    };
   }
 };
 
-export const closeMeteoraPositions = async(
+export const closeMeteoraPositions = async (
   {
     poolId,
     position,
@@ -373,8 +370,8 @@ export const closeMeteoraPositions = async(
   },
 ) => {
   const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
   if (!agent) {
     return {
@@ -386,9 +383,12 @@ export const closeMeteoraPositions = async(
   try {
     const dlmmPool = await DLMM.create(agent.connection, poolId);
     const pos = await dlmmPool.getPosition(position.publicKey);
-    
-    if(pos.positionData.feeX.gt(new BN(0)) || pos.positionData.feeY.gt(new BN(0))){
-      await claimSwapFee({poolId, position: pos}, {agentKit: agent});
+
+    if (
+      pos.positionData.feeX.gt(new BN(0)) ||
+      pos.positionData.feeY.gt(new BN(0))
+    ) {
+      await claimSwapFee({ poolId, position: pos }, { agentKit: agent });
     }
     const binsArray = pos.positionData.positionBinData.map((bin) => bin.binId);
     const removeLiquidityTx = await dlmmPool.removeLiquidity({
@@ -404,12 +404,18 @@ export const closeMeteoraPositions = async(
     }
 
     const signature = await agent.wallet.signTransaction(removeLiquidityTx);
-    const removeLiquiditySignature = await agent.connection.sendRawTransaction(signature.serialize(), {
-      skipPreflight: false,
-      maxRetries: 5,
-      preflightCommitment: 'confirmed',
-    });
-    await agent.connection.confirmTransaction(removeLiquiditySignature, 'confirmed');
+    const removeLiquiditySignature = await agent.connection.sendRawTransaction(
+      signature.serialize(),
+      {
+        skipPreflight: false,
+        maxRetries: 5,
+        preflightCommitment: 'confirmed',
+      },
+    );
+    await agent.connection.confirmTransaction(
+      removeLiquiditySignature,
+      'confirmed',
+    );
 
     return {
       success: true,
@@ -421,12 +427,13 @@ export const closeMeteoraPositions = async(
     console.log(error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to close positions',
+      error:
+        error instanceof Error ? error.message : 'Failed to close positions',
     };
   }
 };
 
-export const claimRewareForOnePosition = async(
+export const claimRewareForOnePosition = async (
   {
     poolId,
     position,
@@ -439,8 +446,8 @@ export const claimRewareForOnePosition = async(
   },
 ) => {
   const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
   if (!agent) {
     return {
@@ -485,12 +492,13 @@ export const claimRewareForOnePosition = async(
     console.log(error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to close positions',
+      error:
+        error instanceof Error ? error.message : 'Failed to close positions',
     };
   }
 };
 
-export const claimSwapFee = async(
+export const claimSwapFee = async (
   {
     poolId,
     position,
@@ -503,8 +511,8 @@ export const claimSwapFee = async(
   },
 ) => {
   const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
   if (!agent) {
     return {
@@ -530,7 +538,7 @@ export const claimSwapFee = async(
       },
     );
     await agent.connection.confirmTransaction(signature);
-    
+
     return {
       success: true,
       result: {
@@ -541,25 +549,25 @@ export const claimSwapFee = async(
     console.log(error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to close positions',
+      error:
+        error instanceof Error ? error.message : 'Failed to close positions',
     };
   }
 };
 
-export async function getAllLbPairPositionForOwner(  
-extraData: {
+export async function getAllLbPairPositionForOwner(extraData: {
   agentKit?: SolanaAgentKit;
 }) {
   const agent =
-  extraData.agentKit ??
-  (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    extraData.agentKit ??
+    (await retrieveAgentKit(undefined))?.data?.data?.agent;
 
   if (!agent) {
-    throw new Error("Failed to retrieve agent");
+    throw new Error('Failed to retrieve agent');
   }
   const ownerAddress = agent.wallet.publicKey.toBase58();
-	const SHYFT_API_KEY = process.env.SHYFT_API_KEY;
-const operationsDoc = `
+  const SHYFT_API_KEY = process.env.SHYFT_API_KEY;
+  const operationsDoc = `
     query MyQuery {
       meteora_dlmm_PositionV2(
         where: {owner: {_eq: ${JSON.stringify(ownerAddress)}}}
@@ -588,13 +596,13 @@ const operationsDoc = `
   const result = await fetch(
     `https://programs.shyft.to/v0/graphql/accounts?api_key=${SHYFT_API_KEY}&network=mainnet-beta`, //SHYFT's GQL endpoint
     {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify({
         query: operationsDoc,
         variables: {},
-        operationName: "MyQuery",
+        operationName: 'MyQuery',
       }),
-    }
+    },
   );
 
   const { errors, data } = await result.json();
@@ -607,7 +615,7 @@ const operationsDoc = `
       allLbPairs.push(new PublicKey(position.lbPair));
     }
   }
-  
+
   if (data.meteora_dlmm_PositionV2.length > 0) {
     for (let index = 0; index < data.meteora_dlmm_PositionV2.length; index++) {
       const position = data.meteora_dlmm_PositionV2[index];

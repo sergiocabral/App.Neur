@@ -1,5 +1,6 @@
-import { MeteoraPool, PositionWithPoolName } from '@/server/actions/meteora';
 import { z } from 'zod';
+
+import { MeteoraPool, PositionWithPoolName } from '@/server/actions/meteora';
 
 export interface TokenInfo {
   symbol?: string;
@@ -134,7 +135,7 @@ export interface ToolDataStream {
     | LaunchPumpfunResult
     | TransferDataResult
     | MeteoraPositionResult
-    |MeteoraPositionUpdateResult;
+    | MeteoraPositionUpdateResult;
 }
 
 export type DataStreamDelta = ToolDataStream;

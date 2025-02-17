@@ -1,9 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+
 import Image from 'next/image';
+import Link from 'next/link';
+
+import { PublicKey } from '@solana/web3.js';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDownUp, ArrowLeft, ArrowRight, Filter, Loader2, X } from 'lucide-react';
+import { isNull } from 'lodash';
+import {
+  ArrowDownUp,
+  ArrowLeft,
+  ArrowRight,
+  Filter,
+  Loader2,
+  X,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -15,6 +27,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -23,15 +36,19 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
-import type { MeteoraPositionUpdateResult } from '@/types/stream';
-import { getAllLbPairPositionForOwner, getMeteoraPositions, getTokenData, PositionWithPoolName, TokenData } from '@/server/actions/meteora';
-import { PublicKey } from '@solana/web3.js';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
+import { truncate } from '@/lib/utils/format';
+import {
+  PositionWithPoolName,
+  TokenData,
+  getAllLbPairPositionForOwner,
+  getMeteoraPositions,
+  getTokenData,
+} from '@/server/actions/meteora';
+import type { MeteoraPositionUpdateResult } from '@/types/stream';
+
 import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
-import { Label } from '@/components/ui/label';
-import Link from 'next/link';
-import { isNull } from 'lodash';
 
 interface MeteoraLpManagerProps {
   data: {
@@ -46,7 +63,8 @@ export function MeteoraLpManager({
   data,
   addToolResult,
 }: MeteoraLpManagerProps) {
-  const [selectedPositon, setSelectedPositon] = useState<PositionWithPoolName | null>(null);
+  const [selectedPositon, setSelectedPositon] =
+    useState<PositionWithPoolName | null>(null);
   console.log(data);
   const [tokenX, setTokenX] = useState<TokenData | undefined>(undefined);
   const [tokenY, setTokenY] = useState<TokenData | undefined>(undefined);
@@ -60,9 +78,13 @@ export function MeteoraLpManager({
   const [claimedX, setClaimedX] = useState<number | null>(null);
   const [claimedY, setClaimedY] = useState<number | null>(null);
 
-  const [allPositions, setAllPositions] = useState<PositionWithPoolName[] | null>(data.result?.positions || null);
+  const [allPositions, setAllPositions] = useState<
+    PositionWithPoolName[] | null
+  >(data.result?.positions || null);
   const [isLoading, setIsLoading] = useState(false);
-  const [action, setAction] = useState<'close' | 'claimLMReward' | 'claimSwapFee' | null>(data.result?.action || null);
+  const [action, setAction] = useState<
+    'close' | 'claimLMReward' | 'claimSwapFee' | null
+  >(data.result?.action || null);
 
   const [overlay, setOverlay] = useState(
     data.result?.step === 'processing' ||
@@ -71,7 +93,7 @@ export function MeteoraLpManager({
   );
 
   useEffect(() => {
-    if(data.result?.positions){
+    if (data.result?.positions) {
       setAllPositions(data.result?.positions);
     }
     if (data.result?.selectedPosition) {
@@ -84,24 +106,60 @@ export function MeteoraLpManager({
         data.result?.step === 'completed',
     );
 
-    setRewardOne(parseInt(data?.result?.selectedPosition?.position?.positionData?.rewardOne?.toString() ?? '0', 16));
-    setRewardTwo(parseInt(data?.result?.selectedPosition?.position?.positionData?.rewardTwo?.toString() ?? '0', 16));
+    setRewardOne(
+      parseInt(
+        data?.result?.selectedPosition?.position?.positionData?.rewardOne?.toString() ??
+          '0',
+        16,
+      ),
+    );
+    setRewardTwo(
+      parseInt(
+        data?.result?.selectedPosition?.position?.positionData?.rewardTwo?.toString() ??
+          '0',
+        16,
+      ),
+    );
 
-    setFeeX(parseInt(data?.result?.selectedPosition?.position?.positionData?.feeX?.toString() ?? '0', 16));
-    setFeeY(parseInt(data?.result?.selectedPosition?.position?.positionData?.feeY?.toString() ?? '0', 16));
+    setFeeX(
+      parseInt(
+        data?.result?.selectedPosition?.position?.positionData?.feeX?.toString() ??
+          '0',
+        16,
+      ),
+    );
+    setFeeY(
+      parseInt(
+        data?.result?.selectedPosition?.position?.positionData?.feeY?.toString() ??
+          '0',
+        16,
+      ),
+    );
 
-    setClaimedX(parseInt(data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeXAmount?.toString() ?? '0', 16));
-    setClaimedY(parseInt(data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeYAmount?.toString() ?? '0', 16));
-    console.log("claimedX", claimedX);
-    console.log("claimedY", claimedY);
+    setClaimedX(
+      parseInt(
+        data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeXAmount?.toString() ??
+          '0',
+        16,
+      ),
+    );
+    setClaimedY(
+      parseInt(
+        data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeYAmount?.toString() ??
+          '0',
+        16,
+      ),
+    );
+    console.log('claimedX', claimedX);
+    console.log('claimedY', claimedY);
   }, [data.result, data.result?.selectedPosition, data.result?.positions]);
 
   useEffect(() => {
-    if(selectedPositon?.mintX &&  selectedPositon.mintY){
-      console.log("selectedPositon int the effect", selectedPositon);
+    if (selectedPositon?.mintX && selectedPositon.mintY) {
+      console.log('selectedPositon int the effect', selectedPositon);
       const fetchTokenData = async () => {
-        const tokenXData = await getTokenData({mint: selectedPositon.mintX});
-        const tokenYData = await getTokenData({mint: selectedPositon.mintY});
+        const tokenXData = await getTokenData({ mint: selectedPositon.mintX });
+        const tokenYData = await getTokenData({ mint: selectedPositon.mintY });
         setTokenX(tokenXData);
         setTokenY(tokenYData);
       };
@@ -114,9 +172,7 @@ export function MeteoraLpManager({
       setIsLoading(true);
       setSelectedPositon(Position);
       await addToolResult({
-        step: data.result?.step || 'awaiting-confirmation',
         selectedPosition: Position,
-        action: data.result?.action,
       });
     } finally {
       setIsLoading(false);
@@ -145,18 +201,28 @@ export function MeteoraLpManager({
       setIsLoading(true);
       await addToolResult({
         step: 'confirmed',
-        selectedPosition: selectedPositon? selectedPositon : undefined,
-        action: action? action : undefined,
+        selectedPosition: selectedPositon ? selectedPositon : undefined,
+        action: action ? action : undefined,
       });
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   const handleCancel = async () => {
-    setAction(null);
-  }
-
+    if (action) {
+      setAction(null);
+    } else {
+      try {
+        setIsLoading(true);
+        addToolResult({
+          step: 'canceled',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -166,39 +232,43 @@ export function MeteoraLpManager({
           <>
             <CardHeader>
               <CardTitle>Your Positions</CardTitle>
-              <CardDescription>Select the position you wanna know more about!</CardDescription>
+              <CardDescription>
+                Select the position you wanna know more about!
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-                {!allPositions ? (
-                  <>
-                    <Skeleton className="h-[68px] w-full rounded-lg" />
-                    <Skeleton className="h-[68px] w-full rounded-lg" />
-                    <Skeleton className="h-[68px] w-full rounded-lg" />
-                  </>
-                ) : (
-                  allPositions?.map((position) => (
-                    <div
-                      key={position.position.publicKey.toString()}
-                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                      onClick={() => handlePositionSelect(position)}
-                    >
-                      <div>
-                        <div className="font-medium">{position.poolName}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Position Address: {position.position.publicKey.toString().slice(0, 8)}...
-                          {position.position.publicKey.toString().slice(-8)} • 
-                          Pool Address: {position.poolAddress.slice(0, 8)}...
-                          {position.poolAddress.toString().slice(-8)}
-                        </div>
+              {!allPositions ? (
+                <>
+                  <Skeleton className="h-[68px] w-full rounded-lg" />
+                  <Skeleton className="h-[68px] w-full rounded-lg" />
+                  <Skeleton className="h-[68px] w-full rounded-lg" />
+                </>
+              ) : (
+                allPositions?.map((position) => (
+                  <div
+                    key={position.position.publicKey.toString()}
+                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                    onClick={() => handlePositionSelect(position)}
+                  >
+                    <div>
+                      <div className="font-medium">{position.poolName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        Position Address:{' '}
+                        {position.position.publicKey.toString().slice(0, 8)}...
+                        {position.position.publicKey.toString().slice(-8)} •
+                        Pool Address: {position.poolAddress.slice(0, 8)}...
+                        {position.poolAddress.toString().slice(-8)}
                       </div>
                     </div>
-                )))}
+                  </div>
+                ))
+              )}
             </CardContent>
           </>
         )}
 
         {/* Amount Input and Pool Details */}
-        {!overlay && selectedPositon &&(
+        {!overlay && selectedPositon && (
           <div className="space-y-6">
             <Button
               variant="ghost"
@@ -219,54 +289,102 @@ export function MeteoraLpManager({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Swap Fee</Label>
-                      {(!tokenX || isNull(feeX)) && <Skeleton className="h-4 w-24" />}
-                      {(!tokenY || isNull(feeY)) && <Skeleton className="h-4 w-24" />}
+                    {(!tokenX || isNull(feeX)) && (
+                      <Skeleton className="h-4 w-24" />
+                    )}
+                    {(!tokenY || isNull(feeY)) && (
+                      <Skeleton className="h-4 w-24" />
+                    )}
 
-                      {tokenX && !isNull(feeX) && <div className="font-medium">
-                        {tokenX.symbol} Fee:{' ' + feeX /10 ** tokenX.decimals+' '} 
-                        {tokenX.price && <span className='font-small'>{`($${((feeX/10 ** tokenX.decimals) * (tokenX.price)).toFixed(3)})`}</span>}
-                      </div> }
-                      {tokenY && !isNull(feeY) && <div className="font-medium">
-                        {tokenY.symbol} Fee: {' '+feeY/10 ** tokenY.decimals+' '}
-                        {tokenY.price && <span className='font-small'>{`($${((feeY/10 ** tokenY.decimals) * (tokenY.price)).toFixed(3)})`}</span>}
-                      </div> }
+                    {tokenX && !isNull(feeX) && (
+                      <div className="font-medium">
+                        {tokenX.symbol} Fee:
+                        {' ' + feeX / 10 ** tokenX.decimals + ' '}
+                        {tokenX.price && (
+                          <span className="font-small">{`($${((feeX / 10 ** tokenX.decimals) * tokenX.price).toFixed(3)})`}</span>
+                        )}
+                      </div>
+                    )}
+                    {tokenY && !isNull(feeY) && (
+                      <div className="font-medium">
+                        {tokenY.symbol} Fee:{' '}
+                        {' ' + feeY / 10 ** tokenY.decimals + ' '}
+                        {tokenY.price && (
+                          <span className="font-small">{`($${((feeY / 10 ** tokenY.decimals) * tokenY.price).toFixed(3)})`}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
-                    {!isNull(rewardTwo) && !isNull(rewardOne) && rewardOne > 0 && rewardTwo > 0 && tokenX && tokenY &&
-                      <div className="space-y-1 checkZero">
+                  {!isNull(rewardTwo) &&
+                    !isNull(rewardOne) &&
+                    rewardOne > 0 &&
+                    rewardTwo > 0 &&
+                    tokenX &&
+                    tokenY && (
+                      <div className="checkZero space-y-1">
                         <Label className="text-muted-foreground">Rewards</Label>
                         <div className="font-medium">
-                          {tokenX.symbol} Reward: {' ' + rewardOne / 10 ** tokenX.decimals+' '}
-                          {tokenX.price && <span className='font-small'>{`($${((rewardOne/10 ** tokenX.decimals) * (tokenX.price)).toFixed(3)})`}</span>}
+                          {tokenX.symbol} Reward:{' '}
+                          {' ' + rewardOne / 10 ** tokenX.decimals + ' '}
+                          {tokenX.price && (
+                            <span className="font-small">{`($${((rewardOne / 10 ** tokenX.decimals) * tokenX.price).toFixed(3)})`}</span>
+                          )}
                         </div>
                         <div className="font-medium">
-                          {tokenY.symbol} Reward: {' '+rewardTwo / 10 ** tokenY.decimals+' '}
-                          {tokenY.price && <span className='font-small'>{`($${((rewardTwo/10 ** tokenY.decimals) * (tokenY.price)).toFixed(3)})`}</span>}
+                          {tokenY.symbol} Reward:{' '}
+                          {' ' + rewardTwo / 10 ** tokenY.decimals + ' '}
+                          {tokenY.price && (
+                            <span className="font-small">{`($${((rewardTwo / 10 ** tokenY.decimals) * tokenY.price).toFixed(3)})`}</span>
+                          )}
                         </div>
-                      </div>}
+                      </div>
+                    )}
 
                   <div className="space-y-1">
-                    <Label className="text-muted-foreground">Total claimed Fee</Label>
-                    {(!tokenX || isNull(claimedX)) && <Skeleton className="h-4 w-24" />}
-                    {(!tokenY || isNull(claimedY)) && <Skeleton className="h-4 w-24" />}
-                    {tokenX && 
+                    <Label className="text-muted-foreground">
+                      Total claimed Fee
+                    </Label>
+                    {(!tokenX || isNull(claimedX)) && (
+                      <Skeleton className="h-4 w-24" />
+                    )}
+                    {(!tokenY || isNull(claimedY)) && (
+                      <Skeleton className="h-4 w-24" />
+                    )}
+                    {tokenX && (
                       <div className="font-medium">
-                        Total Claimed {tokenX.symbol}: {parseInt(selectedPositon.position.positionData.totalClaimedFeeXAmount.toString(), 16)/ 10 ** tokenX.decimals}
-                        {tokenX.price && !isNull(claimedX) && <span className='font-small'>{`($${((claimedX/10 ** tokenX.decimals) * (tokenX.price)).toFixed(3)})`}</span>}
+                        Total Claimed {tokenX.symbol}:{' '}
+                        {parseInt(
+                          selectedPositon.position.positionData.totalClaimedFeeXAmount.toString(),
+                          16,
+                        ) /
+                          10 ** tokenX.decimals}
+                        {tokenX.price && !isNull(claimedX) && (
+                          <span className="font-small">{`($${((claimedX / 10 ** tokenX.decimals) * tokenX.price).toFixed(3)})`}</span>
+                        )}
                       </div>
-                    }
-                    {tokenY && 
+                    )}
+                    {tokenY && (
                       <div className="font-medium">
-                      Total Claimed {tokenY.symbol}: {parseInt(selectedPositon.position.positionData.totalClaimedFeeYAmount.toString(), 16)/ 10 ** tokenY.decimals}
-                      {!isNull(claimedY) && tokenY.price && <span className='font-small'>{`($${((claimedY/10 ** tokenY.decimals) * (tokenY.price)).toFixed(3)})`}</span>}
+                        Total Claimed {tokenY.symbol}:{' '}
+                        {parseInt(
+                          selectedPositon.position.positionData.totalClaimedFeeYAmount.toString(),
+                          16,
+                        ) /
+                          10 ** tokenY.decimals}
+                        {!isNull(claimedY) && tokenY.price && (
+                          <span className="font-small">{`($${((claimedY / 10 ** tokenY.decimals) * tokenY.price).toFixed(3)})`}</span>
+                        )}
                       </div>
-                    }
+                    )}
                   </div>
                 </div>
 
                 <Separator />
 
                 <div className="space-y-1.5">
-                  <Label className="text-muted-foreground">Manage Position</Label>
+                  <Label className="text-muted-foreground">
+                    Manage Position
+                  </Label>
                   <div className="space-y-1">
                     <div className="font-medium">
                       Pool Address: {selectedPositon.poolAddress}
@@ -274,18 +392,34 @@ export function MeteoraLpManager({
                   </div>
                   <div className="flex gap-2">
                     <div>
-                      <Button onClick={() => setAction('claimSwapFee')} variant="default" disabled={action != null}>
+                      <Button
+                        onClick={() => setAction('claimSwapFee')}
+                        variant="default"
+                        disabled={action != null}
+                      >
                         Claim Swap Fee
                       </Button>
                     </div>
-                    {!isNull(rewardOne) && !isNull(rewardTwo) && rewardOne > 0 && rewardTwo > 0 &&
+                    {!isNull(rewardOne) &&
+                      !isNull(rewardTwo) &&
+                      rewardOne > 0 &&
+                      rewardTwo > 0 && (
+                        <div>
+                          <Button
+                            onClick={() => setAction('claimLMReward')}
+                            variant="default"
+                            disabled={action != null}
+                          >
+                            Claim Rewards
+                          </Button>
+                        </div>
+                      )}
                     <div>
-                      <Button onClick={() => setAction('claimLMReward')} variant="default" disabled={action != null}>
-                        Claim Rewards
-                      </Button>
-                    </div>}
-                    <div>
-                      <Button onClick={() => setAction('close')} variant="default" disabled={action != null}>
+                      <Button
+                        onClick={() => setAction('close')}
+                        variant="default"
+                        disabled={action != null}
+                      >
                         Close Position
                       </Button>
                     </div>
@@ -326,18 +460,18 @@ export function MeteoraLpManager({
                   </motion.div>
 
                   <div className="space-y-1">
-                    {data.result?.step === 'canceled' ?( 
-                      <h3 className="text-lg font-medium">
-                      Failed to {action === 'close' ? 'close the position' : (action === 'claimLMReward' ? 'claim your rewards' : 'claim your swap fee')}
-                      </h3>
-                    ):(
+                    {data.result?.step === 'canceled' ? (
+                      <h3 className="text-lg font-medium">Canceled</h3>
+                    ) : (
                       <h3 className="text-lg font-medium">
                         Processing Your request...
                       </h3>
                     )}
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
-                        Position Address: {selectedPositon?.position.publicKey.toString().slice(0, 8)}...{selectedPositon?.position.publicKey.toString().slice(-8)}                    
+                        {selectedPositon?.position.publicKey
+                          ? `Position Address: ${truncate(selectedPositon?.position.publicKey.toString(), 6)}`
+                          : ''}
                       </span>
                     </div>
                   </div>
@@ -373,24 +507,25 @@ export function MeteoraLpManager({
                   </motion.div>
 
                   <div className="space-y-1">
-                    <h3 className="text-lg font-medium">Changes Made Successfully!</h3>
+                    <h3 className="text-lg font-medium">
+                      Changes Made Successfully!
+                    </h3>
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
-                      <span className="font-medium">
-                        Success
-                      </span>
+                        <span className="font-medium">Success</span>
                       </span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
-                        Signature:  {" "}
-                        <Link 
+                        Signature:{' '}
+                        <Link
                           href={`https://solscan.io/tx/${data.result.signature}`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="hover:underline"
                         >
-                          {data.result.signature?.toString().slice(0, 8)}...{data.result.signature?.toString().slice(-8)}
-                        </Link>                 
+                          {data.result.signature?.toString().slice(0, 8)}...
+                          {data.result.signature?.toString().slice(-8)}
+                        </Link>
                       </span>
                     </div>
                   </div>
@@ -404,17 +539,25 @@ export function MeteoraLpManager({
       {data.result?.step === 'awaiting-confirmation' && (
         <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
           <div className="flex items-center justify-between gap-2">
-            {selectedPositon && action &&(
-              <Button onClick={handleConfirmation} variant="default">
-                Confirm Changes
-              </Button>
-            )}
             <Button onClick={handleCancel} variant="default">
               Cancel
             </Button>
+            {selectedPositon && action && (
+              <Button onClick={handleConfirmation} variant="default">
+                Confirm
+              </Button>
+            )}
           </div>
           <div className="text-sm text-muted-foreground">
-            Ready to {action === 'close' ? 'close your position?' : (action === 'claimLMReward' ? 'claim your rewards?' : 'claim your swap fee?')}
+            {action
+              ? `Ready to ${
+                  action === 'close'
+                    ? 'close your position?'
+                    : action === 'claimLMReward'
+                      ? 'claim your rewards?'
+                      : 'claim your swap fee?'
+                }`
+              : ''}
           </div>
         </CardFooter>
       )}

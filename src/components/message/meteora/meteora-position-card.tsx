@@ -297,8 +297,8 @@ export function MeteoraPositionCard({
                           {Number.parseFloat(pair.liquidity)
                             .toFixed(0)
                             .toLocaleString()}{' '}
-                          • APR: {pair.apr.toFixed(2)}%
-                          • Swap ratio: {pair.jupiterSwapRatio.toFixed(2)}
+                          • APR: {pair.apr.toFixed(2)}% • Swap ratio:{' '}
+                          {pair.jupiterSwapRatio.toFixed(2)}
                         </div>
                       </div>
                     </div>
@@ -378,14 +378,18 @@ export function MeteoraPositionCard({
                   <div className="grid gap-1.5 text-sm">
                     <div className="font-medium">
                       Token X: {selectedPair.mint_x.slice(0, 8)}...
-                      {selectedPair.mint_x.slice(-8)} • {selectedPair.tokenXName.name}
+                      {selectedPair.mint_x.slice(-8)} •{' '}
+                      {selectedPair.tokenXName.name}
                     </div>
                     <div className="font-medium">
                       Token Y: {selectedPair.mint_y.slice(0, 8)}...
-                      {selectedPair.mint_y.slice(-8)} • {selectedPair.tokenYName.name}
+                      {selectedPair.mint_y.slice(-8)} •{' '}
+                      {selectedPair.tokenYName.name}
                     </div>
                     <div className="font-medium">
-                      Swap ratio: 1 {selectedPair.tokenXName.symbol} = {selectedPair.jupiterSwapRatio.toFixed(2)} {selectedPair.tokenYName.symbol}
+                      Swap ratio: 1 {selectedPair.tokenXName.symbol} ={' '}
+                      {selectedPair.jupiterSwapRatio.toFixed(2)}{' '}
+                      {selectedPair.tokenYName.symbol}
                     </div>
                   </div>
                 </div>
@@ -500,9 +504,7 @@ export function MeteoraPositionCard({
                           : ''}
                       </span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">
-                      {selectedPair?.name}                        
-                    </span>
+                      <span className="font-medium">{selectedPair?.name}</span>
                     </div>
                   </div>
                 </div>

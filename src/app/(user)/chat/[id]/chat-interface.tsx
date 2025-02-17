@@ -36,6 +36,7 @@ import { Confirmation } from '@/components/confimation';
 import { FloatingWallet } from '@/components/floating-wallet';
 import Logo from '@/components/logo';
 import CreateActionMessage from '@/components/message/create-action/create-action';
+import { MeteoraLpManager } from '@/components/message/meteora/meteora-lp-manager';
 import { MeteoraPositionCard } from '@/components/message/meteora/meteora-position-card';
 import { LaunchResult } from '@/components/message/pumpfun-launch/launch-result';
 import { SwapCard } from '@/components/message/swap/swap-card';
@@ -63,7 +64,6 @@ import { DataStreamDelta } from '@/types/stream';
 import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { ConversationInput } from '../../home/conversation-input';
-import { MeteoraLpManager } from '@/components/message/meteora/meteora-lp-manager';
 
 const TOOL_COMPONENTS: Record<
   string,
@@ -99,7 +99,7 @@ const TOOL_COMPONENTS: Record<
   manageMeteoraLiquidityPositions: {
     component: MeteoraLpManager,
     displayName: '💧 Manage Meteora LPs',
-  }
+  },
 };
 
 // Types
