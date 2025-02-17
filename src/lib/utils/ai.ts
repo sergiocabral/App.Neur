@@ -437,11 +437,23 @@ export function getToolUpdateMessage(
           (message) =>
             message.role === 'assistant' &&
             message.toolInvocations?.length &&
-            message.toolInvocations?.length > 0,
+            message.toolInvocations?.length > 0 &&
+            message.toolInvocations?.find((i) =>
+              dataMessage ? i.toolCallId === dataMessage.toolCallId : true,
+            ),
         )
       : null;
   const toolInvocations = lastAssistantMessage?.toolInvocations;
   const toolUpdate = toolInvocations?.at(-1);
+
+  if (dataMessage) {
+    dataMessage.result = {
+      ...(toolUpdate?.state === 'result'
+        ? toolUpdate.result.result
+        : undefined),
+      ...dataMessage.result,
+    };
+  }
 
   const toolCallResults =
     dataMessage?.result ??

@@ -65,7 +65,6 @@ export function MeteoraLpManager({
 }: MeteoraLpManagerProps) {
   const [selectedPositon, setSelectedPositon] =
     useState<PositionWithPoolName | null>(null);
-  console.log(data);
   const [tokenX, setTokenX] = useState<TokenData | undefined>(undefined);
   const [tokenY, setTokenY] = useState<TokenData | undefined>(undefined);
 
@@ -96,8 +95,14 @@ export function MeteoraLpManager({
     if (data.result?.positions) {
       setAllPositions(data.result?.positions);
     }
-    if (data.result?.selectedPosition) {
-      setSelectedPositon(data.result?.selectedPosition);
+    if (data.result?.selectedPositionAddress && data.result?.positions) {
+      const foundSelectedPosition = data.result?.positions.find(
+        (position: PositionWithPoolName) =>
+          position.poolAddress === data.result?.selectedPositionAddress,
+      );
+      if (foundSelectedPosition) {
+        setSelectedPositon(foundSelectedPosition);
+      }
     }
 
     setOverlay(
@@ -108,51 +113,51 @@ export function MeteoraLpManager({
 
     setRewardOne(
       parseInt(
-        data?.result?.selectedPosition?.position?.positionData?.rewardOne?.toString() ??
-          '0',
+        selectedPositon?.position?.positionData?.rewardOne?.toString() ?? '0',
         16,
       ),
     );
     setRewardTwo(
       parseInt(
-        data?.result?.selectedPosition?.position?.positionData?.rewardTwo?.toString() ??
-          '0',
+        selectedPositon?.position?.positionData?.rewardTwo?.toString() ?? '0',
         16,
       ),
     );
 
     setFeeX(
       parseInt(
-        data?.result?.selectedPosition?.position?.positionData?.feeX?.toString() ??
-          '0',
+        selectedPositon?.position?.positionData?.feeX?.toString() ?? '0',
         16,
       ),
     );
     setFeeY(
       parseInt(
-        data?.result?.selectedPosition?.position?.positionData?.feeY?.toString() ??
-          '0',
+        selectedPositon?.position?.positionData?.feeY?.toString() ?? '0',
         16,
       ),
     );
 
     setClaimedX(
       parseInt(
-        data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeXAmount?.toString() ??
+        selectedPositon?.position?.positionData?.totalClaimedFeeXAmount?.toString() ??
           '0',
         16,
       ),
     );
     setClaimedY(
       parseInt(
-        data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeYAmount?.toString() ??
+        selectedPositon?.position?.positionData?.totalClaimedFeeYAmount?.toString() ??
           '0',
         16,
       ),
     );
     console.log('claimedX', claimedX);
     console.log('claimedY', claimedY);
-  }, [data.result, data.result?.selectedPosition, data.result?.positions]);
+  }, [
+    data.result,
+    data.result?.selectedPositionAddress,
+    data.result?.positions,
+  ]);
 
   useEffect(() => {
     if (selectedPositon?.mintX && selectedPositon.mintY) {
@@ -167,12 +172,13 @@ export function MeteoraLpManager({
     }
   }, [selectedPositon?.mintX, selectedPositon?.mintY]);
 
-  const handlePositionSelect = async (Position: PositionWithPoolName) => {
+  const handlePositionSelect = async (position: PositionWithPoolName) => {
     try {
       setIsLoading(true);
-      setSelectedPositon(Position);
+      setSelectedPositon(position);
       await addToolResult({
-        selectedPosition: Position,
+        step: 'awaiting-confirmation',
+        selectedPositionAddress: position.poolAddress,
       });
     } finally {
       setIsLoading(false);
@@ -188,7 +194,7 @@ export function MeteoraLpManager({
         setSelectedPositon(null);
         await addToolResult({
           step: 'awaiting-confirmation',
-          selectedPosition: undefined,
+          selectedPositionAddress: undefined,
         });
       }
     } finally {
@@ -201,7 +207,9 @@ export function MeteoraLpManager({
       setIsLoading(true);
       await addToolResult({
         step: 'confirmed',
-        selectedPosition: selectedPositon ? selectedPositon : undefined,
+        selectedPositionAddress: selectedPositon
+          ? selectedPositon.poolAddress
+          : undefined,
         action: action ? action : undefined,
       });
     } finally {

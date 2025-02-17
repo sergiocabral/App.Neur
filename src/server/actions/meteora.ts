@@ -102,8 +102,8 @@ export const getMeteoraDlmmForToken = cache(
           group.pairs.map(async (pair: any) => {
             // Fetch token names asynchronously
             const [tokenXName, tokenYName] = await Promise.all([
-              searchJupiterTokens(pair.mint_x),
-              searchJupiterTokens(pair.mint_y),
+              searchJupiterTokens(pair.mint_x, false),
+              searchJupiterTokens(pair.mint_y, false),
             ]);
 
             return {

@@ -28,12 +28,8 @@ export const meteoraLp = (): ToolConfig => {
         .describe('Message that the user sent'),
     }),
     updateParameters: z.object({
-      token: z.object({
-        symbol: z.string(),
-        mint: z.string(),
-      }),
-      amount: z.number().optional(),
-      poolId: z.string().optional(),
+      selectedPositionAddress: z.string(),
+      action: z.enum(['close', 'claimLMReward', 'claimSwapFee']),
     }),
   };
 
@@ -46,13 +42,13 @@ export const meteoraLp = (): ToolConfig => {
       ...metadata,
       execute: async ({ message }, { toolCallId }) => {
         console.log('message', message);
-        const updatedToolCall: {
+        let updatedToolCall: {
           toolCallId: string;
           status: 'streaming' | 'idle';
           step: string;
-          selectedPosition?: PositionWithPoolName | null;
+          selectedPositionAddress?: string | null;
           positions?: PositionWithPoolName[];
-          action?: 'close' | 'claimLMReward' | 'claimSwapFee';
+          action?: 'close' | 'claimLMReward' | 'claimSwapFee' | null;
         } = {
           toolCallId,
           status: 'streaming',
@@ -66,17 +62,10 @@ export const meteoraLp = (): ToolConfig => {
           },
           { agentKit },
         );
-        console.log('positions ', positions);
         if (positions.success && positions.result) {
-          console.log('setting positions..........');
-          console.log(positions.result);
           updatedToolCall.positions = positions.result;
-        } else {
-          console.log(positions.error);
         }
 
-        console.log('updatedToolCall...............', updatedToolCall);
-        // Send initial stream update with wallet
         streamUpdate({
           stream: dataStream,
           update: {
@@ -86,7 +75,7 @@ export const meteoraLp = (): ToolConfig => {
             content: {
               step: 'position-selection',
               positions: updatedToolCall.positions,
-              action: updatedToolCall.action,
+              action: updatedToolCall.action ?? undefined,
             },
           },
         });
@@ -94,45 +83,7 @@ export const meteoraLp = (): ToolConfig => {
         const { object: originalToolCall } = await generateObject({
           model: openai('gpt-4o-mini', { structuredOutputs: true }),
           schema: z.object({
-            selectedPosition: z
-              .object({
-                positon: z.object({
-                  publicKey: z.string(), // PublicKey will be represented as string
-                  positionData: z.object({
-                    totalXAmount: z.string(),
-                    totalYAmount: z.string(),
-                    positionBinData: z.array(
-                      z.object({
-                        binId: z.number(),
-                        price: z.string(),
-                        pricePerToken: z.string(),
-                        binXAmount: z.string(),
-                        binYAmount: z.string(),
-                        binLiquidity: z.string(),
-                        positionLiquidity: z.string(),
-                        positionXAmount: z.string(),
-                        positionYAmount: z.string(),
-                      }),
-                    ),
-                    lastUpdatedAt: z.string(), // BN will be represented as string
-                    upperBinId: z.number(),
-                    lowerBinId: z.number(),
-                    feeX: z.string(), // BN will be represented as string
-                    feeY: z.string(), // BN will be represented as string
-                    rewardOne: z.string(), // BN will be represented as string
-                    rewardTwo: z.string(), // BN will be represented as string
-                    feeOwner: z.string(), // PublicKey will be represented as string
-                    totalClaimedFeeXAmount: z.string(), // BN will be represented as string
-                    totalClaimedFeeYAmount: z.string(), // BN will be represented as string
-                  }),
-                  version: z.number(),
-                }),
-                poolName: z.string(),
-                poolAddress: z.string(),
-                mintX: z.string(),
-                mintY: z.string(),
-              })
-              .nullable(),
+            selectedPositionAddress: z.string().nullable(),
             action: z
               .enum(['close', 'claimLMReward', 'claimSwapFee'])
               .nullable(),
@@ -140,67 +91,12 @@ export const meteoraLp = (): ToolConfig => {
           prompt: `The user sent the following message: ${message}`,
         });
 
-        console.log('originalToolCall...............', originalToolCall);
-
-        if (originalToolCall && originalToolCall.selectedPosition) {
-          console.log('originalToolCall', originalToolCall);
-          const selectedPosition = {
-            position: {
-              publicKey: new PublicKey(
-                originalToolCall.selectedPosition.positon.publicKey,
-              ),
-              positionData: {
-                totalXAmount:
-                  originalToolCall.selectedPosition.positon.positionData
-                    .totalXAmount,
-                totalYAmount:
-                  originalToolCall.selectedPosition.positon.positionData
-                    .totalYAmount,
-                positionBinData:
-                  originalToolCall.selectedPosition.positon.positionData
-                    .positionBinData,
-                lastUpdatedAt: new BN(
-                  originalToolCall.selectedPosition.positon.positionData.lastUpdatedAt,
-                ),
-                upperBinId:
-                  originalToolCall.selectedPosition.positon.positionData
-                    .upperBinId,
-                lowerBinId:
-                  originalToolCall.selectedPosition.positon.positionData
-                    .lowerBinId,
-                feeX: new BN(
-                  originalToolCall.selectedPosition.positon.positionData.feeX,
-                ),
-                feeY: new BN(
-                  originalToolCall.selectedPosition.positon.positionData.feeY,
-                ),
-                rewardOne: new BN(
-                  originalToolCall.selectedPosition.positon.positionData.rewardOne,
-                ),
-                rewardTwo: new BN(
-                  originalToolCall.selectedPosition.positon.positionData.rewardTwo,
-                ),
-                feeOwner: new PublicKey(
-                  originalToolCall.selectedPosition.positon.positionData.feeOwner,
-                ),
-                totalClaimedFeeXAmount: new BN(
-                  originalToolCall.selectedPosition.positon.positionData.totalClaimedFeeXAmount,
-                ),
-                totalClaimedFeeYAmount: new BN(
-                  originalToolCall.selectedPosition.positon.positionData.totalClaimedFeeYAmount,
-                ),
-              },
-              version: originalToolCall.selectedPosition.positon.version,
-            },
-            poolName: originalToolCall.selectedPosition.poolName,
-            poolAddress: originalToolCall.selectedPosition.poolAddress,
-            mintX: originalToolCall.selectedPosition.mintX,
-            mintY: originalToolCall.selectedPosition.mintY,
+        if (originalToolCall) {
+          updatedToolCall = {
+            ...updatedToolCall,
+            selectedPositionAddress: originalToolCall.selectedPositionAddress,
+            action: originalToolCall.action ?? updatedToolCall.action,
           };
-          updatedToolCall.selectedPosition = selectedPosition;
-          if (originalToolCall.action) {
-            updatedToolCall.action = originalToolCall.action;
-          }
           streamUpdate({
             stream: dataStream,
             update: {
@@ -208,7 +104,8 @@ export const meteoraLp = (): ToolConfig => {
               status: 'idle',
               toolCallId,
               content: {
-                selectedPosition: updatedToolCall.selectedPosition ?? undefined,
+                ...updatedToolCall,
+                step: 'awaiting-confirmation',
               },
             },
           });
@@ -220,7 +117,7 @@ export const meteoraLp = (): ToolConfig => {
           result: {
             step: 'awaiting-confirmation',
             positions: updatedToolCall.positions,
-            selectedPosition: updatedToolCall.selectedPosition,
+            selectedPositionAddress: updatedToolCall.selectedPositionAddress,
             action: updatedToolCall.action,
           },
         };
@@ -231,14 +128,19 @@ export const meteoraLp = (): ToolConfig => {
     metadata,
     buildTool,
     confirm: async (toolResults: any, extraData: any) => {
-      const { selectedPosition, action } = toolResults;
+      const { selectedPositionAddress, action, positions } = toolResults;
 
-      if (!selectedPosition || !action) {
+      if (!selectedPositionAddress || !action || !positions) {
         return {
           success: false,
           error: 'Missing position or action',
         };
       }
+
+      const selectedPosition = positions.find(
+        (position: PositionWithPoolName) =>
+          position.poolAddress === selectedPositionAddress,
+      );
 
       if (action === 'claimSwapFee') {
         const result = await claimSwapFee(
