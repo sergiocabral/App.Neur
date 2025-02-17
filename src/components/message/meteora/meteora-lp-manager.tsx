@@ -222,12 +222,12 @@ export function MeteoraLpManager({
                     <Label className="text-muted-foreground">Total claimed Fee</Label>
                     {tokenX && 
                       <div className="font-medium">
-                        Total Claim Fee X: {parseInt(selectedPositon.position.positionData.totalClaimedFeeXAmount.toString(), 16)}
+                        Total Claim Fee X: {parseInt(selectedPositon.position.positionData.totalClaimedFeeXAmount.toString(), 16)/ 10 ** tokenX.decimals}
                       </div>
                     }
                     {tokenY && 
                     <div className="font-medium">
-                      Total Claim Fee Y: {parseInt(selectedPositon.position.positionData.totalClaimedFeeYAmount.toString(), 16)}
+                      Total Claim Fee Y: {parseInt(selectedPositon.position.positionData.totalClaimedFeeYAmount.toString(), 16)/ 10 ** tokenY.decimals}
                     </div>
                     }
                   </div>
@@ -342,7 +342,7 @@ export function MeteoraLpManager({
                   </motion.div>
 
                   <div className="space-y-1">
-                    <h3 className="text-lg font-medium">Position Opened!</h3>
+                    <h3 className="text-lg font-medium">Changes Made Successfully!</h3>
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
                       <span className="font-medium">

@@ -261,6 +261,7 @@ export const meteoraLp = (): ToolConfig => {
               result: {
                 ...updatedToolCall,
                 signature: result.result.signature,
+                action: originalToolCall.action,
                 step: 'completed',
               },
             };

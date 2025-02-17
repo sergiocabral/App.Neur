@@ -385,24 +385,37 @@ export const closeMeteoraPositions = async(
   try {
     const dlmmPool = await DLMM.create(agent.connection, poolId);
     const pos = await dlmmPool.getPosition(position.publicKey);
-    // const binsArray = await dlmmPool.getBinArrays();
-    // const binIds = binsArray.map((bin)=> bin.account.bins.)
-    // const tnx1 = await dlmmPool.removeLiquidity({
-    //   user: agent.wallet.publicKey,
-    //   position: pos.publicKey,
-    //   shouldClaimAndClose: true,
-    // })
-    const tnx = await dlmmPool.closePosition({
+    // First remove all liquidity
+    const binsArray = pos.positionData.positionBinData.map((bin) => bin.binId);
+    const removeLiquidityTx = await dlmmPool.removeLiquidity({
+      user: agent.wallet.publicKey,
+      binIds: binsArray,
+      bps: new BN(100 * 100),
+      position: pos.publicKey,
+      shouldClaimAndClose: false,
+    });
+
+    if (Array.isArray(removeLiquidityTx)) {
+      throw new Error('Unexpected array of transactions');
+    }
+    const signature = await agent.wallet.signTransaction(removeLiquidityTx);
+    const removeLiquiditySignature = await agent.connection.sendRawTransaction(signature.serialize(), {
+      skipPreflight: false,
+      maxRetries: 5,
+      preflightCommitment: 'confirmed',
+    });
+    await agent.connection.confirmTransaction(removeLiquiditySignature);
+    // Now close the empty position
+    
+    const closeTx = await dlmmPool.closePosition({
       owner: agent.wallet.publicKey,
       position: pos,
     });
 
-    tnx.feePayer = agent.wallet.publicKey;
-    // const positionKeypair = new Keypair();
-    const signedTx = await agent.wallet.signTransaction(tnx);
-    // signedTx.partialSign(positionKeypair);
-    const signature = await agent.connection.sendRawTransaction(
-      signedTx.serialize(),
+    closeTx.feePayer = agent.wallet.publicKey;
+    const signedCloseTx = await agent.wallet.signTransaction(closeTx);
+    const closeSignature = await agent.connection.sendRawTransaction(
+      signedCloseTx.serialize(),
       {
         skipPreflight: false,
         maxRetries: 5,
@@ -410,12 +423,12 @@ export const closeMeteoraPositions = async(
       },
     );
 
-    await agent.connection.confirmTransaction(signature);
+    await agent.connection.confirmTransaction(closeSignature);
 
     return {
       success: true,
       result: {
-        signature,
+        signature: closeSignature,
       },
     };
   } catch (error) {
