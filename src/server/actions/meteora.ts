@@ -275,6 +275,7 @@ export interface TokenData {
   name: string;
   symbol: string;
   decimals: number;
+  price?: number;
 }
 
 export const getTokenData = async({
@@ -293,7 +294,9 @@ export const getTokenData = async({
         "Content-Type": "application/json",
       },
     });
+    const price = await fetch(`https://api.jup.ag/price/v2?ids=${mint}`)
     const token = (await response.json()) as TokenData;
+    token.price = (await price.json()).data[mint].price;
     return token;
   } catch (error: any) {
     throw new Error(`Error fetching token data: ${error.message}`);
@@ -406,7 +409,7 @@ export const closeMeteoraPositions = async(
       maxRetries: 5,
       preflightCommitment: 'confirmed',
     });
-    await agent.connection.confirmTransaction(removeLiquiditySignature);
+    await agent.connection.confirmTransaction(removeLiquiditySignature, 'confirmed');
 
     return {
       success: true,
@@ -595,96 +598,20 @@ const operationsDoc = `
   );
 
   const { errors, data } = await result.json();
+  const allLbPairs: PublicKey[] = [];
 
-  console.log("Here's the data: ", data)
+  console.log("Here's the data: ", data);
   if (data.meteora_dlmm_Position.length > 0) {
     for (let index = 0; index < data.meteora_dlmm_Position.length; index++) {
       const position = data.meteora_dlmm_Position[index];
-
-      //get all Lb pair details for the position
-      const LbPairDetails = await fetch(
-        `https://programs.shyft.to/v0/graphql/accounts?api_key=${SHYFT_API_KEY}&network=mainnet-beta`, //SHYFT's GQL endpoint
-        {
-          method: "POST",
-          body: JSON.stringify({
-            query: `
-		query MyQuery {
-		meteora_dlmm_LbPair(where: {pubkey: {_eq: ${JSON.stringify(position.lbPair)}}}
-		) {
-			pubkey
-			oracle
-			pairType
-			reserveX
-			reserveY
-			status
-			tokenXMint
-			tokenYMint
-		}
-	}
-`, //querying the LB pair details
-          variables: {},
-          operationName: "MyQuery",
-          }),
-        }
-      );
-      const LBPairResponse = await LbPairDetails.json();
-
-      console.log({
-        owner: position.owner,
-        lbPair: position.lbPair,
-        lowerBindId: position.lowerBinId,
-        upperBinId: position.upperBinId,
-        lbPairDetails: LBPairResponse.data.meteora_dlmm_LbPair[0],
-      });
-      //adding a delay of 2 seconds to avoid rate limiting, only for free API Keys.
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      allLbPairs.push(new PublicKey(position.lbPair));
     }
   }
-  let allLbPairs: PublicKey[] = [];
   
   if (data.meteora_dlmm_PositionV2.length > 0) {
     for (let index = 0; index < data.meteora_dlmm_PositionV2.length; index++) {
       const position = data.meteora_dlmm_PositionV2[index];
-
-      //get all Lb pair details for the positionV2
-      const LbPairDetails = await fetch(
-        `https://programs.shyft.to/v0/graphql/accounts?api_key=${SHYFT_API_KEY}&network=mainnet-beta`, //SHYFT's GQL endpoint
-        {
-          method: "POST",
-          body: JSON.stringify({
-            query: `
-		query MyQuery {
-		    meteora_dlmm_LbPair(
-	              where: {pubkey: {_eq: ${JSON.stringify(position.lbPair)}}}
-		  ) {
-		      pubkey
-		      oracle
-		      pairType
-		      reserveX
-		      reserveY
-		      status
-		      tokenXMint
-		      tokenYMint
-		     }
-		}
-	    `, //querying the LB pair details
-            variables: {},
-            operationName: "MyQuery",
-          }),
-        }
-      );
-      const LBPairResponse = await LbPairDetails.json();
-
-      console.log({
-        owner: position.owner,
-        lbPair: position.lbPair,
-        lowerBindId: position.lowerBinId,
-        upperBinId: position.upperBinId,
-        lbPairDetails: LBPairResponse.data.meteora_dlmm_LbPair[0],
-      });
       allLbPairs.push(new PublicKey(position.lbPair));
-      //adding a delay of 2 seconds to avoid rate limiting, only for free API Keys.
-      await new Promise((resolve) => setTimeout(resolve, 2000));
     }
   }
   return allLbPairs;

@@ -31,6 +31,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
+import { isNull } from 'lodash';
 
 interface MeteoraLpManagerProps {
   data: {
@@ -50,7 +51,14 @@ export function MeteoraLpManager({
   const [tokenX, setTokenX] = useState<TokenData | undefined>(undefined);
   const [tokenY, setTokenY] = useState<TokenData | undefined>(undefined);
 
-  const { data: walletPortfolio } = useWalletPortfolio();
+  const [rewardOne, setRewardOne] = useState<number | null>(null);
+  const [rewardTwo, setRewardTwo] = useState<number | null>(null);
+
+  const [feeX, setFeeX] = useState<number | null>(null);
+  const [feeY, setFeeY] = useState<number | null>(null);
+
+  const [claimedX, setClaimedX] = useState<number | null>(null);
+  const [claimedY, setClaimedY] = useState<number | null>(null);
 
   const [allPositions, setAllPositions] = useState<PositionWithPoolName[] | null>(data.result?.positions || null);
   const [isLoading, setIsLoading] = useState(false);
@@ -66,7 +74,7 @@ export function MeteoraLpManager({
     if(data.result?.positions){
       setAllPositions(data.result?.positions);
     }
-    if (data.result?.selectedPosition && data.result?.selectedPosition?.position.publicKey !== selectedPositon?.position.publicKey) {
+    if (data.result?.selectedPosition) {
       setSelectedPositon(data.result?.selectedPosition);
     }
 
@@ -75,7 +83,18 @@ export function MeteoraLpManager({
         data.result?.step === 'canceled' ||
         data.result?.step === 'completed',
     );
-  }, [data.result, data.result?.selectedPosition, selectedPositon?.position.publicKey, data.result?.positions]);
+
+    setRewardOne(parseInt(data?.result?.selectedPosition?.position?.positionData?.rewardOne?.toString() ?? '0', 16));
+    setRewardTwo(parseInt(data?.result?.selectedPosition?.position?.positionData?.rewardTwo?.toString() ?? '0', 16));
+
+    setFeeX(parseInt(data?.result?.selectedPosition?.position?.positionData?.feeX?.toString() ?? '0', 16));
+    setFeeY(parseInt(data?.result?.selectedPosition?.position?.positionData?.feeY?.toString() ?? '0', 16));
+
+    setClaimedX(parseInt(data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeXAmount?.toString() ?? '0', 16));
+    setClaimedY(parseInt(data?.result?.selectedPosition?.position?.positionData?.totalClaimedFeeYAmount?.toString() ?? '0', 16));
+    console.log("claimedX", claimedX);
+    console.log("claimedY", claimedY);
+  }, [data.result, data.result?.selectedPosition, data.result?.positions]);
 
   useEffect(() => {
     if(selectedPositon?.mintX &&  selectedPositon.mintY){
@@ -83,8 +102,6 @@ export function MeteoraLpManager({
       const fetchTokenData = async () => {
         const tokenXData = await getTokenData({mint: selectedPositon.mintX});
         const tokenYData = await getTokenData({mint: selectedPositon.mintY});
-        console.log("tokenXData", tokenXData);
-        console.log("tokenYData", tokenYData);
         setTokenX(tokenXData);
         setTokenY(tokenYData);
       };
@@ -202,34 +219,46 @@ export function MeteoraLpManager({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Swap Fee</Label>
-                      {tokenX && <div className="font-medium">
-                        TokenX Fee: {parseInt(selectedPositon.position.positionData.feeX.toString(), 16)/ 10 ** tokenX.decimals}
+                      {(!tokenX || isNull(feeX)) && <Skeleton className="h-4 w-24" />}
+                      {(!tokenY || isNull(feeY)) && <Skeleton className="h-4 w-24" />}
+
+                      {tokenX && !isNull(feeX) && <div className="font-medium">
+                        {tokenX.symbol} Fee:{' ' + feeX /10 ** tokenX.decimals+' '} 
+                        {tokenX.price && <span className='font-small'>{`($${((feeX/10 ** tokenX.decimals) * (tokenX.price)).toFixed(3)})`}</span>}
                       </div> }
-                      {tokenY && <div className="font-medium">
-                        TokenY Fee: {parseInt(selectedPositon.position.positionData.feeY.toString(), 16)/ 10 ** tokenY.decimals}
-                      </div>
-                      }
+                      {tokenY && !isNull(feeY) && <div className="font-medium">
+                        {tokenY.symbol} Fee: {' '+feeY/10 ** tokenY.decimals+' '}
+                        {tokenY.price && <span className='font-small'>{`($${((feeY/10 ** tokenY.decimals) * (tokenY.price)).toFixed(3)})`}</span>}
+                      </div> }
                   </div>
-                  <div className="space-y-1">
-                    <Label className="text-muted-foreground">Rewards</Label>
-                    <div className="font-medium">
-                      Reward One: {parseInt(selectedPositon.position.positionData.rewardOne.toString(), 16)}
-                    </div>
-                    <div className="font-medium">
-                      Reward Two: {parseInt(selectedPositon.position.positionData.rewardTwo.toString(), 16)}
-                    </div>
-                  </div>
+                    {!isNull(rewardTwo) && !isNull(rewardOne) && rewardOne > 0 && rewardTwo > 0 && tokenX && tokenY &&
+                      <div className="space-y-1 checkZero">
+                        <Label className="text-muted-foreground">Rewards</Label>
+                        <div className="font-medium">
+                          {tokenX.symbol} Reward: {' ' + rewardOne / 10 ** tokenX.decimals+' '}
+                          {tokenX.price && <span className='font-small'>{`($${((rewardOne/10 ** tokenX.decimals) * (tokenX.price)).toFixed(3)})`}</span>}
+                        </div>
+                        <div className="font-medium">
+                          {tokenY.symbol} Reward: {' '+rewardTwo / 10 ** tokenY.decimals+' '}
+                          {tokenY.price && <span className='font-small'>{`($${((rewardTwo/10 ** tokenY.decimals) * (tokenY.price)).toFixed(3)})`}</span>}
+                        </div>
+                      </div>}
+
                   <div className="space-y-1">
                     <Label className="text-muted-foreground">Total claimed Fee</Label>
+                    {(!tokenX || isNull(claimedX)) && <Skeleton className="h-4 w-24" />}
+                    {(!tokenY || isNull(claimedY)) && <Skeleton className="h-4 w-24" />}
                     {tokenX && 
                       <div className="font-medium">
-                        Total Claim Fee X: {parseInt(selectedPositon.position.positionData.totalClaimedFeeXAmount.toString(), 16)/ 10 ** tokenX.decimals}
+                        Total Claimed {tokenX.symbol}: {parseInt(selectedPositon.position.positionData.totalClaimedFeeXAmount.toString(), 16)/ 10 ** tokenX.decimals}
+                        {tokenX.price && !isNull(claimedX) && <span className='font-small'>{`($${((claimedX/10 ** tokenX.decimals) * (tokenX.price)).toFixed(3)})`}</span>}
                       </div>
                     }
                     {tokenY && 
-                    <div className="font-medium">
-                      Total Claim Fee Y: {parseInt(selectedPositon.position.positionData.totalClaimedFeeYAmount.toString(), 16)/ 10 ** tokenY.decimals}
-                    </div>
+                      <div className="font-medium">
+                      Total Claimed {tokenY.symbol}: {parseInt(selectedPositon.position.positionData.totalClaimedFeeYAmount.toString(), 16)/ 10 ** tokenY.decimals}
+                      {!isNull(claimedY) && tokenY.price && <span className='font-small'>{`($${((claimedY/10 ** tokenY.decimals) * (tokenY.price)).toFixed(3)})`}</span>}
+                      </div>
                     }
                   </div>
                 </div>
@@ -249,11 +278,12 @@ export function MeteoraLpManager({
                         Claim Swap Fee
                       </Button>
                     </div>
+                    {!isNull(rewardOne) && !isNull(rewardTwo) && rewardOne > 0 && rewardTwo > 0 &&
                     <div>
                       <Button onClick={() => setAction('claimLMReward')} variant="default" disabled={action != null}>
                         Claim Rewards
                       </Button>
-                    </div>
+                    </div>}
                     <div>
                       <Button onClick={() => setAction('close')} variant="default" disabled={action != null}>
                         Close Position
