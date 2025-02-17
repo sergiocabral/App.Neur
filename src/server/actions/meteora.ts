@@ -384,15 +384,23 @@ export const closeMeteoraPositions = async(
 
   try {
     const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const pos = await dlmmPool.getPosition(position.publicKey);
+    // const binsArray = await dlmmPool.getBinArrays();
+    // const binIds = binsArray.map((bin)=> bin.account.bins.)
+    // const tnx1 = await dlmmPool.removeLiquidity({
+    //   user: agent.wallet.publicKey,
+    //   position: pos.publicKey,
+    //   shouldClaimAndClose: true,
+    // })
     const tnx = await dlmmPool.closePosition({
       owner: agent.wallet.publicKey,
-      position: position,
+      position: pos,
     });
 
     tnx.feePayer = agent.wallet.publicKey;
-    const positionKeypair = new Keypair();
+    // const positionKeypair = new Keypair();
     const signedTx = await agent.wallet.signTransaction(tnx);
-    signedTx.partialSign(positionKeypair);
+    // signedTx.partialSign(positionKeypair);
     const signature = await agent.connection.sendRawTransaction(
       signedTx.serialize(),
       {
@@ -411,6 +419,7 @@ export const closeMeteoraPositions = async(
       },
     };
   } catch (error) {
+    console.log(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to close positions',
@@ -442,15 +451,20 @@ export const claimRewareForOnePosition = async(
   }
   try {
     const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const pos = await dlmmPool.getPosition(position.publicKey);
     const tnx = await dlmmPool.claimLMReward({
       owner: agent.wallet.publicKey,
-      position: position,
-    })
+      position: pos,
+    });
+
+    if (!tnx) {
+      throw new Error('Failed to create claim LM reward transaction');
+    }
 
     tnx.feePayer = agent.wallet.publicKey;
-    const positionKeypair = new Keypair();
+    // const positionKeypair = new Keypair();
     const signedTx = await agent.wallet.signTransaction(tnx);
-    signedTx.partialSign(positionKeypair);
+    // signedTx.partialSign(positionKeypair);
     const signature = await agent.connection.sendRawTransaction(
       signedTx.serialize(),
       {
@@ -469,6 +483,7 @@ export const claimRewareForOnePosition = async(
       },
     };
   } catch (error) {
+    console.log(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to close positions',
@@ -500,15 +515,13 @@ export const claimSwapFee = async(
   }
   try {
     const dlmmPool = await DLMM.create(agent.connection, poolId);
+    const pos = await dlmmPool.getPosition(position.publicKey);
     const tnx = await dlmmPool.claimSwapFee({
       owner: agent.wallet.publicKey,
-      position: position,
+      position: pos,
     });
-
     tnx.feePayer = agent.wallet.publicKey;
-    const positionKeypair = new Keypair();
     const signedTx = await agent.wallet.signTransaction(tnx);
-    signedTx.partialSign(positionKeypair);
     const signature = await agent.connection.sendRawTransaction(
       signedTx.serialize(),
       {
@@ -517,7 +530,6 @@ export const claimSwapFee = async(
         preflightCommitment: 'confirmed',
       },
     );
-
     await agent.connection.confirmTransaction(signature);
     
     return {
@@ -527,6 +539,7 @@ export const claimSwapFee = async(
       },
     };
   } catch (error) {
+    console.log(error);
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to close positions',
