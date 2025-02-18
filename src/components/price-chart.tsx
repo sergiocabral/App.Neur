@@ -2,7 +2,12 @@
 
 import React, { useEffect, useRef } from 'react';
 
-import { CandlestickSeries, IChartApi, createChart } from 'lightweight-charts';
+import {
+  BarPrice,
+  CandlestickSeries,
+  IChartApi,
+  createChart,
+} from 'lightweight-charts';
 
 import {
   Card,
@@ -35,10 +40,25 @@ export default function LightweightChart({
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
+    const minMove = Math.min(
+      ...data
+        .slice(1)
+        .map((d, i) => Math.abs(d.close - data[i].close))
+        .filter((diff) => diff > 0),
+    );
+
+    const computedMinMove =
+      minMove < 0.01 ? Math.pow(10, Math.floor(Math.log10(minMove))) : 0.01;
     let chart: IChartApi;
+
     if (containerRef.current) {
       chart = createChart(containerRef.current);
-      const series = chart.addSeries(CandlestickSeries);
+      const series = chart.addSeries(CandlestickSeries, {
+        priceFormat: {
+          type: 'price',
+          minMove: computedMinMove,
+        },
+      });
       series.setData(data);
     }
     return () => {

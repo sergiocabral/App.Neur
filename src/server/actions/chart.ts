@@ -108,7 +108,7 @@ async function getDexOhlcv(
   const parsed = dexOhlcvApiResponseSchema.parse(data);
   const ohlcvList = parsed.data.attributes.ohlcv_list;
 
-  return ohlcvList.map(([timestamp, open, high, low, close]) => {
+  const result = ohlcvList.map(([timestamp, open, high, low, close]) => {
     return {
       // Timestamp from DEX already in seconds
       time: timestamp as UTCTimestamp,
@@ -118,7 +118,8 @@ async function getDexOhlcv(
       close,
     };
   });
-  // TODO: ask about reversed
+  result.reverse();
+  return result;
 }
 
 export async function getDexPriceHistory(

@@ -16,7 +16,7 @@ export class Interval {
     }
   }
 
- static mapIntervalToDexPath(interval: INTERVAL): string {
+  static mapIntervalToDexPath(interval: INTERVAL): string {
     switch (interval) {
       case INTERVAL.DAYS:
         return 'day';
@@ -41,7 +41,9 @@ export class Interval {
       return '1';
     }
     if (interval === INTERVAL.MINUTES && !['1', '5', '15'].includes(agg)) {
-      console.warn(`Invalid aggregator '${agg}' for MINUTES. Defaulting to '1'.`);
+      console.warn(
+        `Invalid aggregator '${agg}' for MINUTES. Defaulting to '1'.`,
+      );
       return '1';
     }
 
