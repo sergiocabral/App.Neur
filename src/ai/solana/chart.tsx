@@ -1,21 +1,24 @@
+import React from 'react';
+
+import { IChartApi } from 'lightweight-charts';
 import { z } from 'zod';
 
 import PriceChart from '@/components/price-chart';
 import { getDexPriceHistory, getPriceHistory } from '@/server/actions/chart';
-import { TIMEFRAME } from '@/types/chart';
+import { Candle } from '@/types/candle';
+import { INTERVAL } from '@/types/interval';
+import { TIMEFRAME } from '@/types/timeframe';
 
 const chartToolParameters = z.object({
   contractAddress: z.string().describe('The contract address of the token'),
-  timeFrame: z
-    .enum([TIMEFRAME.DAYS, TIMEFRAME.HOURS, TIMEFRAME.MINUTES])
-    .default(TIMEFRAME.DAYS)
-    .describe('The timeframe for the price history'),
-  timeDelta: z
-    .number()
-    .min(1)
-    .max(30)
-    .default(7)
-    .describe('Number of timeframe units to fetch (default 7)'),
+  interval: z
+    .nativeEnum(INTERVAL)
+    .default(INTERVAL.DAYS)
+    .describe('The time interval for the price history'),
+  timeframe: z
+    .nativeEnum(TIMEFRAME)
+    .default(TIMEFRAME.WEEK)
+    .describe('Number of timeframe units to fetch (default 7, 1W, one week)'),
   tokenSymbol: z.string().optional().describe('Optional token symbol'),
   aggregator: z.string().optional().describe('OHLCV aggregator for DEX'),
   beforeTimestamp: z
@@ -27,8 +30,9 @@ const chartToolParameters = z.object({
 function renderChart(result: unknown) {
   const typedResult = result as {
     success: boolean;
-    data?: { time: number; value: number }[];
-    timeFrame: TIMEFRAME;
+    data?: Candle[];
+    interval: INTERVAL;
+    timeframe: TIMEFRAME;
     tokenInfo: { symbol: string; address: string };
     error?: string;
   };
@@ -44,7 +48,7 @@ function renderChart(result: unknown) {
   return (
     <PriceChart
       data={typedResult.data}
-      timeFrame={typedResult.timeFrame}
+      interval={typedResult.interval}
       tokenInfo={typedResult.tokenInfo}
     />
   );
@@ -60,8 +64,8 @@ export const priceChartTool = {
   requiredEnvVars: ['CG_API_KEY'],
   execute: async ({
     contractAddress,
-    timeFrame,
-    timeDelta,
+    interval,
+    timeframe,
     tokenSymbol,
     aggregator,
     beforeTimestamp,
@@ -70,8 +74,8 @@ export const priceChartTool = {
       const history = await getPriceHistory(
         contractAddress,
         'solana',
-        timeFrame,
-        timeDelta,
+        interval,
+        timeframe,
         aggregator,
         beforeTimestamp,
       );
@@ -79,7 +83,7 @@ export const priceChartTool = {
       return {
         success: true,
         data: history,
-        timeFrame,
+        interval,
         tokenInfo: {
           symbol: tokenSymbol ?? contractAddress,
           address: contractAddress,
@@ -108,8 +112,8 @@ export const dexChartTool = {
   requiredEnvVars: ['CG_API_KEY'],
   execute: async ({
     contractAddress,
-    timeFrame,
-    timeDelta,
+    interval,
+    timeframe,
     tokenSymbol,
     aggregator,
     beforeTimestamp,
@@ -118,7 +122,7 @@ export const dexChartTool = {
       const history = await getDexPriceHistory(
         contractAddress,
         'solana',
-        timeFrame,
+        interval,
         aggregator,
         beforeTimestamp,
       );
@@ -126,7 +130,7 @@ export const dexChartTool = {
       return {
         success: true,
         data: history,
-        timeFrame,
+        interval,
         tokenInfo: {
           symbol: tokenSymbol ?? contractAddress,
           address: contractAddress,

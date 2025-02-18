@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 
-import { CartesianGrid, Line, LineChart, XAxis, YAxis } from 'recharts';
+import { CandlestickSeries, IChartApi, createChart } from 'lightweight-charts';
 
 import {
   Card,
@@ -11,41 +11,16 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-import { formatChartPrice } from '@/lib/format';
-import { TIMEFRAME } from '@/types/chart';
+import { Candle } from '@/types/candle';
+import { INTERVAL } from '@/types/interval';
 
 interface PriceChartProps {
-  data: {
-    time: number;
-    value: number;
-  }[];
-  timeFrame: TIMEFRAME;
+  data: Candle[];
+  interval: INTERVAL;
   tokenInfo: {
     symbol: string;
     address: string;
   };
-}
-
-function formatDate(time: number, timeFrame: TIMEFRAME) {
-  switch (timeFrame) {
-    case TIMEFRAME.DAYS:
-      return new Date(time).toLocaleDateString(undefined, {
-        month: 'short',
-        day: '2-digit',
-      });
-    case TIMEFRAME.HOURS:
-      return new Date(time).toLocaleTimeString();
-    default:
-      return new Date(time).toLocaleDateString(undefined, {
-        month: 'short',
-        day: '2-digit',
-      });
-  }
 }
 
 function shortenAddress(addr: string) {
@@ -53,15 +28,25 @@ function shortenAddress(addr: string) {
   return addr.slice(0, 4) + '...' + addr.slice(-4);
 }
 
-export default function PriceChart({
+export default function LightweightChart({
   data,
-  timeFrame,
+  interval,
   tokenInfo: { symbol, address },
 }: PriceChartProps) {
-  const transformedData = data.map((point) => ({
-    date: formatDate(point.time, timeFrame),
-    price: point.value,
-  }));
+  const containerRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let chart: IChartApi;
+    if (containerRef.current) {
+      chart = createChart(containerRef.current);
+      const series = chart.addSeries(CandlestickSeries);
+      series.setData(data);
+    }
+    return () => {
+      if (chart) {
+        chart.remove();
+      }
+    };
+  }, [data]);
 
   return (
     <Card>
@@ -77,48 +62,10 @@ export default function PriceChart({
       </CardHeader>
 
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <ChartContainer
-          config={{
-            price: {
-              label: 'Price',
-              color: 'hsl(var(--chart-1))',
-            },
-          }}
-        >
-          <LineChart data={transformedData}>
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey="date"
-              tickLine={true}
-              axisLine={true}
-              tickMargin={8}
-            />
-            <YAxis
-              domain={[
-                (dataMin: number) => dataMin * 0.95,
-                (dataMax: number) => dataMax * 1.05,
-              ]}
-              tickFormatter={(val) => formatChartPrice(val)}
-            />
-            <ChartTooltip
-              content={
-                <ChartTooltipContent
-                  formatter={(value) => {
-                    return formatChartPrice(Number(value));
-                  }}
-                />
-              }
-            />
-            <Line
-              dataKey="price"
-              strokeWidth={2}
-              type="monotone"
-              dot={false}
-              activeDot={{ r: 4 }}
-              stroke="hsl(var(--chart-1))"
-            />
-          </LineChart>
-        </ChartContainer>
+        <div
+          ref={containerRef}
+          style={{ width: '600px', height: '400px' }}
+        ></div>
       </CardContent>
     </Card>
   );
