@@ -15,8 +15,8 @@ export interface JupiterToken {
   logoURI: string | null;
 }
 
-const searchForToken = async (query: string) => {
-  const tokens = await searchJupiterTokens(query, true);
+export const searchForToken = async (query: string, onlyVerified = true) => {
+  const tokens = await searchJupiterTokens(query, onlyVerified);
   const searchQuery = query.toLowerCase();
 
   try {
@@ -70,8 +70,19 @@ export const searchTokenByName = () => {
       }): Promise<{
         success: boolean;
         result: JupiterToken | null;
+        noFollowUp?: boolean;
       }> => {
-        return await searchForToken(token);
+        const result = await searchForToken(token);
+        if (!result.success) {
+          return {
+            success: false,
+            result: null,
+          };
+        }
+        return {
+          ...result,
+          noFollowUp: true,
+        };
       },
     });
 
@@ -99,32 +110,18 @@ export const searchTokenByMint = () => {
         tokenMint,
       }): Promise<{
         success: boolean;
-        result: JupiterToken;
-        noFollowUp: boolean;
+        result: JupiterToken | null;
+        noFollowUp?: boolean;
       }> => {
-        const tokens = await searchJupiterTokens(tokenMint, false);
-        const searchQuery = tokenMint.toLowerCase();
-
-        // Search and rank tokens
-        const results = tokens
-          .sort((a, b) => {
-            // Exact matches first
-            const aExact = a.address.toLowerCase() === searchQuery;
-            const bExact = b.address.toLowerCase() === searchQuery;
-            if (aExact && !bExact) return -1;
-            if (!aExact && bExact) return 1;
-            return 0;
-          })
-          .slice(0, 1);
-
+        const result = await searchForToken(tokenMint, false);
+        if (!result.success) {
+          return {
+            success: false,
+            result: null,
+          };
+        }
         return {
-          success: true,
-          result: {
-            symbol: results[0].symbol,
-            mint: results[0].address,
-            name: results[0].name,
-            logoURI: results[0].logoURI,
-          },
+          ...result,
           noFollowUp: true,
         };
       },
@@ -209,7 +206,7 @@ export const getTokenPrice = () => {
           };
         }
         const tokenResult = token.mint
-          ? (await searchForToken(token.mint)).result
+          ? (await searchForToken(token.mint, false)).result
           : (await searchForToken(token.tokenName!)).result;
         if (!tokenResult) {
           return {

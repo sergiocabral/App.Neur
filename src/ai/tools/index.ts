@@ -11,7 +11,9 @@ import { allDriftTools } from './drift';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
+import { meteoraLp } from './manage-meteora-lp';
 import { allMetaplexTools } from './metaplex';
+import { meteoraPosition } from './meteora';
 import { allSearchTokenTools, searchTokenByName } from './search-token';
 import { allSolanaTools } from './solana';
 import { swapTokens } from './swap';
@@ -48,6 +50,8 @@ export const allTools: Record<string, ToolConfig> = {
   transferTokens: transferTokens(),
   launchPumpFun: launchPumpFun(),
   createAction: createAction(),
+  openMeteoraLiquidityPosition: meteoraPosition(),
+  manageMeteoraLiquidityPositions: meteoraLp(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,
