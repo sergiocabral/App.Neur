@@ -180,6 +180,7 @@ export function MeteoraLpManager({
         step: 'awaiting-confirmation',
         selectedPositionAddress: position.poolAddress,
         positions: data.result?.positions,
+        action: action ? action : undefined,
       });
     } finally {
       setIsLoading(false);
@@ -523,7 +524,11 @@ export function MeteoraLpManager({
                     </h3>
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
-                        <span className="font-medium">Success</span>
+                        <span className="font-medium">
+                        Successfully {action === 'close' ? "Closed the Position" : 
+                        action === 'claimLMReward' ? "Claimed Rewards" :
+                        action === 'claimSwapFee' ? "Claimed Swap Fee" : ''}
+                        </span>
                       </span>
                       <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       <span className="font-medium">
