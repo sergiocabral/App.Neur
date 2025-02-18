@@ -8,7 +8,7 @@ import prisma from '@/lib/prisma';
 import { ActionResponse, actionClient } from '@/lib/safe-action';
 import { Token } from '@/types/db';
 
-const getTokenByAddress = cache(
+export const getTokenByAddress = cache(
   actionClient
     .schema(z.object({ contractAddress: z.string() }))
     .action<
@@ -26,6 +26,33 @@ const getTokenByAddress = cache(
         return { success: true, data: token };
       } catch {
         return { success: false, error: 'Error getting token by address' };
+      }
+    }),
+);
+
+export const getTokensByAddresses = cache(
+  actionClient
+    .schema(z.object({ contractAddresses: z.array(z.string()) }))
+    .action<
+      ActionResponse<{ found: Token[]; missing: string[] }>
+    >(async ({ parsedInput: { contractAddresses } }) => {
+      try {
+        const tokens = await prisma.token.findMany({
+          where: { contractAddress: { in: contractAddresses } },
+        });
+
+        const foundAddresses = new Set(tokens.map((token) => token.contractAddress));
+        const missingAddresses = contractAddresses.filter((address) => !foundAddresses.has(address));
+
+        return {
+          success: true,
+          data: {
+            found: tokens,
+            missing: missingAddresses,
+          },
+        };
+      } catch {
+        return { success: false, error: 'Error getting tokens by addresses' };
       }
     }),
 );
