@@ -179,6 +179,7 @@ export function MeteoraLpManager({
       await addToolResult({
         step: 'awaiting-confirmation',
         selectedPositionAddress: position.poolAddress,
+        positions: data.result?.positions,
       });
     } finally {
       setIsLoading(false);
@@ -195,6 +196,7 @@ export function MeteoraLpManager({
         await addToolResult({
           step: 'awaiting-confirmation',
           selectedPositionAddress: undefined,
+          positions: data.result?.positions,
         });
       }
     } finally {
@@ -211,6 +213,7 @@ export function MeteoraLpManager({
           ? selectedPositon.poolAddress
           : undefined,
         action: action ? action : undefined,
+        positions: data.result?.positions,
       });
     } finally {
       setIsLoading(false);
