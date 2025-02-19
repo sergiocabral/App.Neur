@@ -29,6 +29,19 @@ export class Interval {
     }
   }
 
+  static mapIntervalToDisplay(interval: INTERVAL): string {
+    switch (interval) {
+      case INTERVAL.DAYS:
+        return 'Daily';
+      case INTERVAL.HOURS:
+        return 'Hourly';
+      case INTERVAL.MINUTES:
+        return 'Minute';
+      default:
+        return 'Minute';
+    }
+  }
+
   static validateAggregator(interval: INTERVAL, aggregator?: string): string {
     const agg = aggregator ?? '1';
 

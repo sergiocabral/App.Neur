@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { Candle } from '@/types/candle';
 import { INTERVAL, Interval } from '@/types/interval';
-import { TIMEFRAME, Timeframe } from '@/types/timeframe';
+import { TIME_RANGE, TimeRange } from '@/types/time-range';
 
 const API_KEY = process.env.CG_API_KEY;
 const BASE_URL =
@@ -39,12 +39,12 @@ export async function getTokenId(
 export async function getPriceHistoryFromCG(
   tokenId: string,
   interval: INTERVAL = INTERVAL.DAYS,
-  timeFrame: TIMEFRAME = TIMEFRAME.WEEK,
+  timeRange: TIME_RANGE = TIME_RANGE.WEEK,
 ): Promise<Candle[]> {
   if (!API_KEY) throw new Error('API key not found');
   const cgInterval = Interval.mapIntervalToCgInterval(interval);
-  const cgTimeframe = Timeframe.timeframeToCgTimeframe(timeFrame);
-  const url = `${BASE_URL}/coins/${tokenId}/ohlc?vs_currency=usd&days=${cgTimeframe}&interval=${cgInterval}&precision=18`;
+  const cgTimeRange = TimeRange.mapTimeRangeToCgTimeRange(timeRange);
+  const url = `${BASE_URL}/coins/${tokenId}/ohlc?vs_currency=usd&days=${cgTimeRange}&interval=${cgInterval}&precision=18`;
   const response = await fetch(url, {
     method: 'GET',
     headers: { accept: 'application/json', 'x-cg-pro-api-key': API_KEY },
@@ -137,13 +137,13 @@ export async function getPriceHistory(
   contractAddress: string,
   network: string = NETWORK,
   interval: INTERVAL = INTERVAL.DAYS,
-  timeDelta: TIMEFRAME = TIMEFRAME.WEEK,
+  timeRange: TIME_RANGE = TIME_RANGE.WEEK,
   aggregator?: string,
   beforeTimestamp?: number,
 ): Promise<Candle[]> {
   try {
     const tokenId = await getTokenId(contractAddress, network);
-    return getPriceHistoryFromCG(tokenId, interval, timeDelta);
+    return getPriceHistoryFromCG(tokenId, interval, timeRange);
   } catch (err) {
     return getDexPriceHistory(
       contractAddress,
