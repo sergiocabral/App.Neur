@@ -4,13 +4,13 @@ import { BN } from '@coral-xyz/anchor';
 import DLMM, { LbPosition, StrategyType } from '@meteora-ag/dlmm';
 import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { SolanaAgentKit } from 'solana-agent-kit';
-import { string } from 'zod';
+
+import { RPC_URL } from '@/lib/constants';
+import { searchWalletAssets } from '@/lib/solana/helius';
 
 import { retrieveAgentKit } from './ai';
-import { JupiterToken, searchJupiterTokens } from './jupiter';
+import { JupiterToken } from './jupiter';
 import { performSwap } from './swap';
-import { SOL_MINT, Token } from '@/types/helius/portfolio';
-import { searchWalletAssets } from '@/lib/solana/helius';
 
 export interface MeteoraPool {
   poolId: string;
@@ -65,7 +65,6 @@ export interface MeteoraDlmmPair {
     hour_12: number;
     hour_24: number;
   };
-  jupiterSwapRatio: number;
   tokenXName: JupiterToken;
   tokenYName: JupiterToken;
 }
@@ -100,28 +99,11 @@ export const getMeteoraDlmmForToken = cache(
 
     return Promise.all(
       data.groups.map(async (group: any) => {
-        const pairInfo = await Promise.all(
-          group.pairs.map(async (pair: any) => {
-            // Fetch token names asynchronously
-            const [tokenXName, tokenYName] = await Promise.all([
-              searchJupiterTokens(pair.mint_x, false),
-              searchJupiterTokens(pair.mint_y, false),
-            ]);
-
-            return {
-              ...pair,
-              jupiterSwapRatio: calculateJupiterSwapRatio(pair),
-              tokenXName: tokenXName[0], // Add token name
-              tokenYName: tokenYName[0],
-            };
-          }),
-        );
-
         return {
           name: group.name,
-          pairs: pairInfo, // Use resolved pairs
-          maxApr: Math.max(...pairInfo.map((p: any) => p.apr)),
-          totalTvl: pairInfo.reduce(
+          pairs: group.pairs,
+          maxApr: Math.max(...group.pairs.map((p: any) => p.apr)),
+          totalTvl: group.pairs.reduce(
             (acc: number, p: any) => acc + parseFloat(p.liquidity),
             0,
           ),
@@ -131,23 +113,21 @@ export const getMeteoraDlmmForToken = cache(
   },
 );
 
-// Helper function to calculate Jupiter swap ratio
-function calculateJupiterSwapRatio(pair: any): number {
-  if (!pair.reserve_x_amount || !pair.reserve_y_amount) {
-    return 0;
-  }
-
-  // Calculate price as reserveY/reserveX (following Jupiter's convention)
-  const jupiterSwapRatio = pair.reserve_y_amount / pair.reserve_x_amount;
-
-  return jupiterSwapRatio;
-}
+export const getSwapRatioForPool = async (poolId: string) => {
+  const pool = await DLMM.create(
+    new Connection(RPC_URL),
+    new PublicKey(poolId),
+  );
+  const activeBin = await pool.getActiveBin();
+  return parseFloat(pool.fromPricePerLamport(Number(activeBin.price)));
+};
 
 export const openMeteoraPosition = async (
   {
     poolId,
     token: inputToken,
     amount,
+    shouldSwapHalf = false,
   }: {
     poolId: string;
     token: {
@@ -155,6 +135,7 @@ export const openMeteoraPosition = async (
       symbol?: string;
     };
     amount: number;
+    shouldSwapHalf?: boolean;
   },
   extraData: {
     agentKit?: SolanaAgentKit;
@@ -187,7 +168,7 @@ export const openMeteoraPosition = async (
 
     const isBaseX = dlmmPool.tokenX.publicKey.toBase58() === inputToken.mint;
 
-    const inputAmount = amount / 2;
+    const inputAmount = shouldSwapHalf ? amount / 2 : amount;
 
     let tokenXAmountBN, tokenYAmountBN;
 
@@ -210,55 +191,25 @@ export const openMeteoraPosition = async (
       );
     }
 
-    const { fungibleTokens } = await searchWalletAssets(agent.wallet.publicKey.toBase58());
-
-    const tokens: Token[] = fungibleTokens
-      .filter(
-        (token) =>
-          token.id === SOL_MINT ||
-          token.token_info.balance *
-            token.token_info.price_info?.price_per_token >
-            1,
-      )
-      .map((token) => ({
-        mint: token.id,
-        name: token.content.metadata.name,
-        symbol: token.content.metadata.symbol,
-        imageUrl:
-          token.content.files?.[0]?.uri || token.content.links?.image || '',
-        balance:
-          token.token_info.balance / Math.pow(10, token.token_info.decimals),
-        pricePerToken: token.token_info.price_info?.price_per_token || 0,
-        decimals: token.token_info.decimals,
-      }))
-      .filter(
-        (token, index, self) =>
-          token.symbol !== 'SOL' ||
-          index === self.findIndex((t) => t.symbol === 'SOL'),
-      );
-      
-    const tokenX = tokens.find(
-      (token) => token.mint === dlmmPool.tokenX.publicKey.toBase58(),
-    );
-    const tokenY = tokens.find(
-      (token) => token.mint === dlmmPool.tokenY.publicKey.toBase58(),
+    const { fungibleTokens } = await searchWalletAssets(
+      agent.wallet.publicKey.toBase58(),
     );
 
-    const tokenXBalance = (tokenX?.balance||0) * Math.pow(10, (tokenX?.decimals||0));
-    const tokenYBalance = (tokenY?.balance||0) * Math.pow(10, (tokenY?.decimals||0));
+    const tokenX = fungibleTokens.find(
+      (token) => token.id === dlmmPool.tokenX.publicKey.toBase58(),
+    );
+    const tokenY = fungibleTokens.find(
+      (token) => token.id === dlmmPool.tokenY.publicKey.toBase58(),
+    );
 
-    console.log('Token X balance:', tokenXBalance);
-    console.log('Token Y balance:', tokenYBalance);
+    const tokenXBalance = tokenX?.token_info?.balance || 0;
+    const tokenYBalance = tokenY?.token_info?.balance || 0;
 
     const needsSwap = isBaseX
       ? tokenYBalance.toString() < tokenYAmountBN.toString()
       : tokenXBalance.toString() < tokenXAmountBN.toString();
 
-    console.log('Needs swap:', needsSwap);
-    console.log('Token X amount:', tokenXAmountBN.toString());
-    console.log('Token Y amount:', tokenYAmountBN.toString());
-
-    if (needsSwap) {
+    if (shouldSwapHalf) {
       const swapResult = await performSwap(
         {
           inputToken,
@@ -278,6 +229,11 @@ export const openMeteoraPosition = async (
           error: swapResult.error,
         };
       }
+    } else if (needsSwap) {
+      return {
+        success: false,
+        error: 'Insufficient token balance',
+      };
     }
 
     // Create position transaction
@@ -373,11 +329,9 @@ export const getMeteoraPositions = async (
     };
   }
 
-  console.log('You are being called with pollIds: ', poolIds);
   const connection = agent.connection;
 
   try {
-    console.log('Started the fetching.................!');
     let AllPositions: PositionWithPoolName[] = [];
     for (const poolId of poolIds) {
       const dlmmPool = await DLMM.create(connection, poolId);
@@ -520,9 +474,7 @@ export const claimRewareForOnePosition = async (
     }
 
     tnx.feePayer = agent.wallet.publicKey;
-    // const positionKeypair = new Keypair();
     const signedTx = await agent.wallet.signTransaction(tnx);
-    // signedTx.partialSign(positionKeypair);
     const signature = await agent.connection.sendRawTransaction(
       signedTx.serialize(),
       {

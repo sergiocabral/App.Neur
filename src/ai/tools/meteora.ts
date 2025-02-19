@@ -1,13 +1,12 @@
-import { Output, generateObject, streamText, tool } from 'ai';
+import { generateObject, tool } from 'ai';
 import { z } from 'zod';
 
-import { diffObjects, streamUpdate } from '@/lib/utils';
-import { MeteoraPool, openMeteoraPosition } from '@/server/actions/meteora';
-import { MeteoraPositionResult, Token } from '@/types/stream';
+import { streamUpdate } from '@/lib/utils';
+import { openMeteoraPosition } from '@/server/actions/meteora';
 
 import { ToolConfig, WrappedToolProps } from '.';
 import { openai } from '../providers';
-import { searchForToken } from './search-token';
+import { searchForToken, searchForTokenByMint } from './search-token';
 
 export const tokenSchema = z
   .object({
@@ -37,6 +36,7 @@ export const meteoraPosition = (): ToolConfig => {
       }),
       amount: z.number(),
       poolId: z.string(),
+      shouldSwapHalf: z.boolean(),
     }),
   };
 
@@ -75,6 +75,7 @@ export const meteoraPosition = (): ToolConfig => {
               .nullable(),
             amount: z.number().nullable(),
             poolId: z.string().nullable(),
+            shouldSwapHalf: z.boolean().nullable(),
           }),
           prompt: `The user sent the following message: ${message}`,
         });
@@ -84,7 +85,7 @@ export const meteoraPosition = (): ToolConfig => {
           (originalToolCall.token?.mint || originalToolCall.token?.symbol)
         ) {
           const selectedTokenResult = originalToolCall.token.mint
-            ? await searchForToken(originalToolCall.token.mint, false)
+            ? await searchForTokenByMint(originalToolCall.token.mint)
             : await searchForToken(originalToolCall.token.symbol!);
           if (selectedTokenResult.success && selectedTokenResult.result) {
             updatedToolCall.token = {
