@@ -9,6 +9,8 @@ import { Prisma, User as _PrismaUser } from '@prisma/client';
 import type { Conversation as _PrismaConversation } from '@prisma/client';
 import { User as _PrivyUser } from '@privy-io/react-auth';
 
+export type { Token } from '@prisma/client';
+
 export type EmbeddedWallet = Pick<
   _PrismaWallet,
   | 'id'
