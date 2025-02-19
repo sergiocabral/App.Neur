@@ -379,17 +379,17 @@ export function MeteoraPositionCard({
                     <div className="font-medium">
                       Token X: {selectedPair.mint_x.slice(0, 8)}...
                       {selectedPair.mint_x.slice(-8)} •{' '}
-                      {selectedPair.tokenXName.name}
+                      {selectedPair.tokenXName?.name}
                     </div>
                     <div className="font-medium">
                       Token Y: {selectedPair.mint_y.slice(0, 8)}...
                       {selectedPair.mint_y.slice(-8)} •{' '}
-                      {selectedPair.tokenYName.name}
+                      {selectedPair.tokenYName?.name}
                     </div>
                     <div className="font-medium">
-                      Swap ratio: 1 {selectedPair.tokenXName.symbol} ={' '}
+                      Swap ratio: 1 {selectedPair.tokenXName?.symbol} ={' '}
                       {selectedPair.jupiterSwapRatio.toFixed(2)}{' '}
-                      {selectedPair.tokenYName.symbol}
+                      {selectedPair.tokenYName?.symbol}
                     </div>
                   </div>
                 </div>

@@ -9,6 +9,8 @@ import { string } from 'zod';
 import { retrieveAgentKit } from './ai';
 import { JupiterToken, searchJupiterTokens } from './jupiter';
 import { performSwap } from './swap';
+import { SOL_MINT, Token } from '@/types/helius/portfolio';
+import { searchWalletAssets } from '@/lib/solana/helius';
 
 export interface MeteoraPool {
   poolId: string;
@@ -208,24 +210,74 @@ export const openMeteoraPosition = async (
       );
     }
 
-    const swapResult = await performSwap(
-      {
-        inputToken,
-        outputToken: {
-          mint: isBaseX
-            ? dlmmPool.tokenY.publicKey.toBase58()
-            : dlmmPool.tokenX.publicKey.toBase58(),
-        },
-        inputAmount,
-      },
-      { agentKit: agent },
+    const { fungibleTokens } = await searchWalletAssets(agent.wallet.publicKey.toBase58());
+
+    const tokens: Token[] = fungibleTokens
+      .filter(
+        (token) =>
+          token.id === SOL_MINT ||
+          token.token_info.balance *
+            token.token_info.price_info?.price_per_token >
+            1,
+      )
+      .map((token) => ({
+        mint: token.id,
+        name: token.content.metadata.name,
+        symbol: token.content.metadata.symbol,
+        imageUrl:
+          token.content.files?.[0]?.uri || token.content.links?.image || '',
+        balance:
+          token.token_info.balance / Math.pow(10, token.token_info.decimals),
+        pricePerToken: token.token_info.price_info?.price_per_token || 0,
+        decimals: token.token_info.decimals,
+      }))
+      .filter(
+        (token, index, self) =>
+          token.symbol !== 'SOL' ||
+          index === self.findIndex((t) => t.symbol === 'SOL'),
+      );
+      
+    const tokenX = tokens.find(
+      (token) => token.mint === dlmmPool.tokenX.publicKey.toBase58(),
+    );
+    const tokenY = tokens.find(
+      (token) => token.mint === dlmmPool.tokenY.publicKey.toBase58(),
     );
 
-    if (!swapResult.success) {
-      return {
-        success: false,
-        error: swapResult.error,
-      };
+    const tokenXBalance = (tokenX?.balance||0) * Math.pow(10, (tokenX?.decimals||0));
+    const tokenYBalance = (tokenY?.balance||0) * Math.pow(10, (tokenY?.decimals||0));
+
+    console.log('Token X balance:', tokenXBalance);
+    console.log('Token Y balance:', tokenYBalance);
+
+    const needsSwap = isBaseX
+      ? tokenYBalance.toString() < tokenYAmountBN.toString()
+      : tokenXBalance.toString() < tokenXAmountBN.toString();
+
+    console.log('Needs swap:', needsSwap);
+    console.log('Token X amount:', tokenXAmountBN.toString());
+    console.log('Token Y amount:', tokenYAmountBN.toString());
+
+    if (needsSwap) {
+      const swapResult = await performSwap(
+        {
+          inputToken,
+          outputToken: {
+            mint: isBaseX
+              ? dlmmPool.tokenY.publicKey.toBase58()
+              : dlmmPool.tokenX.publicKey.toBase58(),
+          },
+          inputAmount,
+        },
+        { agentKit: agent },
+      );
+
+      if (!swapResult.success) {
+        return {
+          success: false,
+          error: swapResult.error,
+        };
+      }
     }
 
     // Create position transaction
