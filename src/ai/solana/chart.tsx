@@ -4,7 +4,7 @@ import { z } from 'zod';
 
 import PriceChart from '@/components/price-chart';
 import { getDexPriceHistory, getPriceHistory } from '@/server/actions/chart';
-import { Candle } from '@/types/candle';
+import { Candle } from '@/types/chart-elements';
 import { INTERVAL } from '@/types/interval';
 import { TIME_RANGE } from '@/types/time-range';
 

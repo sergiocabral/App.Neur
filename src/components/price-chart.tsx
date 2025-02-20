@@ -1,15 +1,18 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 
 import {
   CandlestickSeries,
   ChartOptions,
   DeepPartial,
   IChartApi,
+  ISeriesApi,
+  LineSeries,
   createChart,
 } from 'lightweight-charts';
 
+import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -17,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Candle } from '@/types/candle';
+import { Candle, candleArrayToLine } from '@/types/chart-elements';
 import { INTERVAL, Interval } from '@/types/interval';
 import { TIME_RANGE, TimeRange } from '@/types/time-range';
 
@@ -53,6 +56,18 @@ const chartOptions: DeepPartial<ChartOptions> = {
   },
 };
 
+function shouldScaleLine(
+  interval: INTERVAL,
+  timeRange: TIME_RANGE | undefined,
+): boolean {
+  return interval == INTERVAL.DAYS && timeRange != undefined;
+}
+
+enum CHART_TYPES {
+  CANDLE,
+  LINE,
+}
+
 export default function LightweightChart({
   data,
   interval,
@@ -61,11 +76,33 @@ export default function LightweightChart({
   aggregator,
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const candleButtonRef = useRef<HTMLButtonElement>(null);
+  const lineButtonRef = useRef<HTMLButtonElement>(null);
+  const chartRef = useRef<IChartApi>(null);
+  const seriesRef = useRef<ISeriesApi<any>>(null);
+  const selectedChartTypeRef = useRef<CHART_TYPES>(CHART_TYPES.CANDLE);
   const timeRangeDisplay: string | undefined = timeRange
     ? TimeRange.mapTimeRangeToDisplay(timeRange)
     : undefined;
   const intervalDisplay = Interval.mapIntervalToDisplay(interval);
-  useEffect(() => {
+
+  function switchToCandle() {
+    selectedChartTypeRef.current = CHART_TYPES.CANDLE;
+    if (chartRef.current && seriesRef.current) {
+      chartRef.current.removeSeries(seriesRef.current);
+      addCandleSeries();
+    }
+  }
+
+  function switchToLine() {
+    selectedChartTypeRef.current = CHART_TYPES.LINE;
+    if (chartRef.current && seriesRef.current) {
+      chartRef.current.removeSeries(seriesRef.current);
+      addLineSeries();
+    }
+  }
+
+  const computeMinMove = useCallback((): number => {
     const minMove = Math.min(
       ...data
         .slice(1)
@@ -73,27 +110,75 @@ export default function LightweightChart({
         .filter((diff) => diff > 0),
     );
 
-    const computedMinMove =
-      minMove < 0.01 ? Math.pow(10, Math.floor(Math.log10(minMove))) : 0.01;
-    let chart: IChartApi;
+    return minMove < 0.01
+      ? Math.pow(10, Math.floor(Math.log10(minMove)))
+      : 0.01;
+  }, [data]);
 
-    if (containerRef.current) {
-      chart = createChart(containerRef.current, chartOptions);
-      chart.timeScale().fitContent();
-      const series = chart.addSeries(CandlestickSeries, {
+  const addCandleSeries = useCallback(() => {
+    if (chartRef.current) {
+      const computedMinMove = computeMinMove();
+      seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
         priceFormat: {
           type: 'price',
           minMove: computedMinMove,
         },
       });
-      series.setData(data);
+      seriesRef.current.priceScale().applyOptions({
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
+      });
+      seriesRef.current.setData(data);
+    }
+  }, [computeMinMove, data]);
+
+  const addLineSeries = useCallback(() => {
+    if (chartRef.current) {
+      const computedMinMove = computeMinMove();
+      const lineData = candleArrayToLine(data);
+      seriesRef.current = chartRef.current.addSeries(LineSeries, {
+        priceFormat: {
+          type: 'price',
+          minMove: computedMinMove,
+        },
+      });
+      // adjust for candle wicks affecting price scale, attempt to maintain similar scale
+      if (shouldScaleLine(interval, timeRange)) {
+        seriesRef.current.priceScale().applyOptions({
+          scaleMargins: {
+            top: 0.2,
+            bottom: 0.15,
+          },
+        });
+      }
+      seriesRef.current.setData(lineData);
+    }
+  }, [computeMinMove, data]);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      chartRef.current = createChart(containerRef.current, chartOptions);
+      chartRef.current.timeScale().fitContent();
+      // re-render safe
+      switch (selectedChartTypeRef.current) {
+        case CHART_TYPES.CANDLE:
+          addCandleSeries();
+          break;
+        case CHART_TYPES.LINE:
+          addLineSeries();
+          break;
+        default:
+          addCandleSeries();
+      }
     }
     return () => {
-      if (chart) {
-        chart.remove();
+      if (chartRef.current) {
+        chartRef.current.remove();
       }
     };
-  }, [data]);
+  }, [addCandleSeries, addLineSeries, data]);
 
   return (
     <Card>
@@ -116,6 +201,20 @@ export default function LightweightChart({
       </CardHeader>
 
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+        <Button
+          ref={candleButtonRef}
+          onClick={switchToCandle}
+          variant={'secondary'}
+        >
+          Candle
+        </Button>
+        <Button
+          ref={lineButtonRef}
+          onClick={switchToLine}
+          variant={'secondary'}
+        >
+          Line
+        </Button>
         <div ref={containerRef}></div>
       </CardContent>
     </Card>

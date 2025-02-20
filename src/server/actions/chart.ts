@@ -1,7 +1,7 @@
 import { UTCTimestamp } from 'lightweight-charts';
 import { z } from 'zod';
 
-import { Candle } from '@/types/candle';
+import { Candle } from '@/types/chart-elements';
 import { INTERVAL, Interval } from '@/types/interval';
 import { TIME_RANGE, TimeRange } from '@/types/time-range';
 
