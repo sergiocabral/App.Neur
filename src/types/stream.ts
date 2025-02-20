@@ -121,7 +121,7 @@ export interface MeteoraPositionUpdateResult {
     | 'completed'
     | 'canceled';
   positions?: PositionWithPoolName[];
-  selectedPositionAddress?: string;
+  selectedPositionAddress?: string | null;
   action?: 'close' | 'claimLMReward' | 'claimSwapFee';
   signature?: string;
   error?: string;

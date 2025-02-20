@@ -135,21 +135,10 @@ export function MeteoraLpManager({
         16,
       ),
     );
-  }, [
-    data.result,
-    data.result?.selectedPositionAddress,
-    data.result?.positions,
-    selectedPositon?.position?.positionData?.feeX?.toString(),
-    selectedPositon?.position?.positionData?.rewardOne?.toString(),
-    selectedPositon?.position?.positionData?.totalClaimedFeeYAmount?.toString(),
-    selectedPositon?.position?.positionData?.totalClaimedFeeXAmount?.toString(),
-    selectedPositon?.position?.positionData?.feeY?.toString(),
-    selectedPositon?.position?.positionData?.rewardTwo?.toString(),
-  ]);
+  }, [data.result?.positions, data.result?.selectedPositionAddress]);
 
   useEffect(() => {
     if (selectedPositon?.mintX && selectedPositon.mintY) {
-      console.log('selectedPositon int the effect', selectedPositon);
       const fetchTokenData = async () => {
         const tokenXData = await getTokenData({ mint: selectedPositon.mintX });
         const tokenYData = await getTokenData({ mint: selectedPositon.mintY });
@@ -165,10 +154,7 @@ export function MeteoraLpManager({
       setIsLoading(true);
       setSelectedPositon(position);
       await addToolResult({
-        step: 'awaiting-confirmation',
         selectedPositionAddress: position.poolAddress,
-        positions: data.result?.positions,
-        action: action ? action : undefined,
       });
     } finally {
       setIsLoading(false);
@@ -180,12 +166,8 @@ export function MeteoraLpManager({
       setIsLoading(true);
       if (selectedPositon) {
         setSelectedPositon(null);
-      } else {
-        setSelectedPositon(null);
         await addToolResult({
-          step: 'awaiting-confirmation',
-          selectedPositionAddress: undefined,
-          positions: data.result?.positions,
+          selectedPositionAddress: null,
         });
       }
     } finally {
