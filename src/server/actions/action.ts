@@ -13,10 +13,11 @@ import {
   defaultModel,
   defaultSystemPrompt,
   defaultTools,
-  getToolsFromRequiredTools,
 } from '@/ai/providers';
+import { wrapTools } from '@/ai/tools';
 import prisma from '@/lib/prisma';
 import { isValidTokenUsage, logWithTiming } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils/format';
 import {
   dbCreateMessages,
   dbCreateTokenStat,
@@ -101,19 +102,17 @@ export async function processAction(action: ActionWithUser) {
       }
     }
 
-    const tools = toolsRequired
-      ? getToolsFromRequiredTools(toolsRequired)
-      : defaultTools;
-
-    const clonedTools = _.cloneDeep(tools);
-    for (const toolName in clonedTools) {
-      const tool = clonedTools[toolName as keyof typeof clonedTools];
-      clonedTools[toolName as keyof typeof clonedTools] = {
-        ...tool,
-        agentKit: agent.data?.agent,
-        userId: action.userId,
-      };
-    }
+    const tools = wrapTools(
+      {
+        extraData: {
+          userId: action.userId,
+          walletAddress: activeWallet.publicKey,
+          askForConfirmation: false,
+          agentKit: agent,
+        },
+      },
+      toolsRequired,
+    );
 
     // Remove createAction from tools, prevent recursive action creation
     delete tools.createAction;
@@ -123,7 +122,7 @@ export async function processAction(action: ActionWithUser) {
     const { response, usage } = await generateText({
       model: defaultModel,
       system: systemPrompt,
-      tools: clonedTools as Record<string, CoreTool<any, any>>,
+      tools,
       experimental_telemetry: {
         isEnabled: true,
         functionId: 'generate-text',
@@ -193,6 +192,7 @@ export async function processAction(action: ActionWithUser) {
     const messages = await dbCreateMessages({
       messages: finalMessages.map((message) => {
         return {
+          id: generateUUID(),
           conversationId: action.conversationId,
           createdAt: message.createdAt,
           role: message.role,
@@ -280,6 +280,7 @@ export async function processAction(action: ActionWithUser) {
         await dbCreateMessages({
           messages: [
             {
+              id: generateUUID(),
               conversationId: action.conversationId,
               role: 'assistant',
               content: `I've paused action ${action.id} because it has not executed successfully in the last 24 hours.`,
@@ -301,6 +302,7 @@ export async function processAction(action: ActionWithUser) {
         await dbCreateMessages({
           messages: [
             {
+              id: generateUUID(),
               conversationId: action.conversationId,
               role: 'assistant',
               content: `I've paused action ${action.id} because it has failed to execute successfully more than ${ACTION_PAUSE_THRESHOLD} times.`,

@@ -86,6 +86,7 @@ interface TokenParams {
 
 interface TokenHoldersResult {
   success: boolean;
+  noFollowUp?: boolean;
   data?: {
     totalHolders: number;
     topHolders: Holder[];
@@ -589,6 +590,7 @@ const wallet = {
 
 const swap = {
   swapTokens: {
+    deprecated: true,
     agentKit: null,
     displayName: '🪙 Swap Tokens',
     description:
@@ -664,8 +666,8 @@ const swap = {
 };
 
 const token = {
-  holders: {
-    displayName: '💼 Token Holder Stats',
+  getTopHolders: {
+    displayName: '💼 Token Top Holder Stats',
     description: 'Get the token holder stats for a Solana token',
     parameters: z.object({
       mint: publicKeySchema.describe('Token mint address'),
@@ -673,9 +675,9 @@ const token = {
     execute: async ({ mint }: TokenParams): Promise<TokenHoldersResult> => {
       try {
         const tokenHolderStats = await getHoldersClassification(mint);
-        console.log('[token.holders] tokenHolderStats', tokenHolderStats);
         return {
           success: true,
+          noFollowUp: true,
           data: {
             totalHolders: tokenHolderStats.totalHolders,
             topHolders: tokenHolderStats.topHolders,

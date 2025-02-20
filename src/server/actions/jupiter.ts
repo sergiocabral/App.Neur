@@ -62,6 +62,39 @@ export const searchJupiterTokens = async (
   );
 };
 
+export const searchJupiterTokenMint = cache(
+  async (mint: string): Promise<JupiterToken | undefined> => {
+    try {
+      const response = await fetch(
+        `https://tokens.jup.ag/tokens/v1/token/${mint}`,
+        {
+          next: {
+            revalidate: 300, // Cache for 5 minutes
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch Jupiter tokens');
+      }
+
+      const data = await response.json();
+      const parsed = jupiterTokenSchema.parse(data);
+
+      // Only return the fields we need
+      return {
+        address: parsed.address,
+        name: parsed.name,
+        symbol: parsed.symbol,
+        logoURI: parsed.logoURI,
+      };
+    } catch (error) {
+      console.error('Error fetching Jupiter tokens:', error);
+      return undefined;
+    }
+  },
+);
+
 export interface TokenPrice {
   id: string;
   type: string;
