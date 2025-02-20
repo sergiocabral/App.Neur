@@ -84,7 +84,8 @@ export const performCreateAction = async (
 
 export const createAction = () => {
   const metadata = {
-    description: 'Launch a token on PumpFun',
+    description:
+      'Create an action in the database. Do proper checks if the action requires additional setup before creating an action',
     parameters: z.object({
       name: z
         .string()

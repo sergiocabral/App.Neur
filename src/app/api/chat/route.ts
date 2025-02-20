@@ -357,9 +357,12 @@ async function saveResponses(
         m.content !== '' || (m.toolInvocations || []).length !== 0,
     );
 
+    const now = new Date();
     finalMessages.forEach((m, index) => {
       if (m.createdAt) {
         m.createdAt = new Date(m.createdAt.getTime() + index);
+      } else {
+        m.createdAt = new Date(now.getTime() + index);
       }
       if (m.role === 'assistant' && m.toolInvocations) {
         m.toolInvocations = m.toolInvocations.filter((t) => t.state !== 'call');
