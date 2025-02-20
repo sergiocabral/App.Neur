@@ -5,7 +5,14 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, ArrowRight, Info, Loader2, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ExternalLink,
+  Info,
+  Loader2,
+  X,
+} from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -29,6 +36,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useDlmmForToken } from '@/hooks/use-pools-for-token';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
+import { truncate } from '@/lib/utils/format';
 import { searchJupiterTokenMint } from '@/server/actions/jupiter';
 import {
   type MeteoraDlmmGroup,
@@ -136,6 +144,7 @@ export function MeteoraPositionCard({
       token: selectedToken,
       amount: Number.parseFloat(selectedAmount),
       poolId: selectedPair.address,
+      shouldSwapHalf: swapHalf,
     });
   };
 
@@ -646,11 +655,12 @@ export function MeteoraPositionCard({
                         ? 'Position Canceled'
                         : 'Opening a Position'}
                     </h3>
-                    {selectedToken?.symbol && (
-                      <p className="text-sm text-muted-foreground">
-                        For {selectedAmount} {selectedToken.symbol}
-                      </p>
-                    )}
+                    {selectedToken?.symbol &&
+                      data.result?.step !== 'canceled' && (
+                        <p className="text-sm text-muted-foreground">
+                          For {selectedAmount} {selectedToken.symbol}
+                        </p>
+                      )}
                   </div>
                 </div>
               </motion.div>
@@ -686,13 +696,18 @@ export function MeteoraPositionCard({
                   <div className="space-y-1">
                     <h3 className="text-lg font-medium">Position Opened!</h3>
                     <div className="flex items-center justify-center gap-2 text-sm">
-                      <span className="font-medium">
-                        {selectedToken?.symbol
-                          ? `For ${selectedAmount} ${selectedToken.symbol}`
-                          : ''}
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{selectedPair?.name}</span>
+                      Signature:{' '}
+                      <a
+                        href={`https://solscan.io/tx/${data?.result?.signature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-primary hover:underline"
+                      >
+                        <span className="font-mono">
+                          {truncate(data?.result?.signature ?? '', 8)}
+                        </span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     </div>
                   </div>
                 </div>

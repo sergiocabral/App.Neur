@@ -1,21 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import Image from 'next/image';
-import Link from 'next/link';
-
-import { PublicKey } from '@solana/web3.js';
 import { AnimatePresence, motion } from 'framer-motion';
 import { isNull } from 'lodash';
-import {
-  ArrowDownUp,
-  ArrowLeft,
-  ArrowRight,
-  Filter,
-  Loader2,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, ExternalLink, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,24 +15,19 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { truncate } from '@/lib/utils/format';
 import {
-  PositionWithPoolName,
-  TokenData,
-  getAllLbPairPositionForOwner,
-  getMeteoraPositions,
+  type PositionWithPoolName,
+  type TokenData,
   getTokenData,
 } from '@/server/actions/meteora';
 import type { MeteoraPositionUpdateResult } from '@/types/stream';
@@ -112,51 +96,55 @@ export function MeteoraLpManager({
     );
 
     setRewardOne(
-      parseInt(
+      Number.parseInt(
         selectedPositon?.position?.positionData?.rewardOne?.toString() ?? '0',
         16,
       ),
     );
     setRewardTwo(
-      parseInt(
+      Number.parseInt(
         selectedPositon?.position?.positionData?.rewardTwo?.toString() ?? '0',
         16,
       ),
     );
 
     setFeeX(
-      parseInt(
+      Number.parseInt(
         selectedPositon?.position?.positionData?.feeX?.toString() ?? '0',
         16,
       ),
     );
     setFeeY(
-      parseInt(
+      Number.parseInt(
         selectedPositon?.position?.positionData?.feeY?.toString() ?? '0',
         16,
       ),
     );
 
     setClaimedX(
-      parseInt(
+      Number.parseInt(
         selectedPositon?.position?.positionData?.totalClaimedFeeXAmount?.toString() ??
           '0',
         16,
       ),
     );
     setClaimedY(
-      parseInt(
+      Number.parseInt(
         selectedPositon?.position?.positionData?.totalClaimedFeeYAmount?.toString() ??
           '0',
         16,
       ),
     );
-    console.log('claimedX', claimedX);
-    console.log('claimedY', claimedY);
   }, [
     data.result,
     data.result?.selectedPositionAddress,
     data.result?.positions,
+    selectedPositon?.position?.positionData?.feeX?.toString(),
+    selectedPositon?.position?.positionData?.rewardOne?.toString(),
+    selectedPositon?.position?.positionData?.totalClaimedFeeYAmount?.toString(),
+    selectedPositon?.position?.positionData?.totalClaimedFeeXAmount?.toString(),
+    selectedPositon?.position?.positionData?.feeY?.toString(),
+    selectedPositon?.position?.positionData?.rewardTwo?.toString(),
   ]);
 
   useEffect(() => {
@@ -170,7 +158,7 @@ export function MeteoraLpManager({
       };
       fetchTokenData();
     }
-  }, [selectedPositon?.mintX, selectedPositon?.mintY]);
+  }, [selectedPositon]);
 
   const handlePositionSelect = async (position: PositionWithPoolName) => {
     try {
@@ -283,6 +271,7 @@ export function MeteoraLpManager({
         {!overlay && selectedPositon && (
           <div className="space-y-6">
             <Button
+              aria-label="Back to position list"
               variant="ghost"
               size="sm"
               onClick={handleBack}
@@ -365,7 +354,7 @@ export function MeteoraLpManager({
                     {tokenX && (
                       <div className="font-medium">
                         Total Claimed {tokenX.symbol}:{' '}
-                        {parseInt(
+                        {Number.parseInt(
                           selectedPositon.position.positionData.totalClaimedFeeXAmount.toString(),
                           16,
                         ) /
@@ -378,7 +367,7 @@ export function MeteoraLpManager({
                     {tokenY && (
                       <div className="font-medium">
                         Total Claimed {tokenY.symbol}:{' '}
-                        {parseInt(
+                        {Number.parseInt(
                           selectedPositon.position.positionData.totalClaimedFeeYAmount.toString(),
                           16,
                         ) /
@@ -403,38 +392,61 @@ export function MeteoraLpManager({
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    <div>
-                      <Button
-                        onClick={() => setAction('claimSwapFee')}
-                        variant="default"
-                        disabled={action != null}
-                      >
-                        Claim Swap Fee
-                      </Button>
-                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => setAction('claimSwapFee')}
+                            variant="default"
+                            disabled={action != null || isLoading}
+                          >
+                            {isLoading ? 'Processing...' : 'Claim Swap Fee'}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Claim accumulated swap fees from your position</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     {!isNull(rewardOne) &&
                       !isNull(rewardTwo) &&
                       rewardOne > 0 &&
                       rewardTwo > 0 && (
-                        <div>
-                          <Button
-                            onClick={() => setAction('claimLMReward')}
-                            variant="default"
-                            disabled={action != null}
-                          >
-                            Claim Rewards
-                          </Button>
-                        </div>
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                onClick={() => setAction('claimLMReward')}
+                                variant="default"
+                                disabled={action != null || isLoading}
+                              >
+                                {isLoading ? 'Processing...' : 'Claim Rewards'}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>
+                                Claim accumulated LM rewards from your position
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
                       )}
-                    <div>
-                      <Button
-                        onClick={() => setAction('close')}
-                        variant="default"
-                        disabled={action != null}
-                      >
-                        Close Position
-                      </Button>
-                    </div>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={() => setAction('close')}
+                            variant="default"
+                            disabled={action != null || isLoading}
+                          >
+                            {isLoading ? 'Processing...' : 'Close Position'}
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Close your position and withdraw all liquidity</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </div>
               </CardContent>
@@ -479,13 +491,15 @@ export function MeteoraLpManager({
                         Processing Your request...
                       </h3>
                     )}
-                    <div className="flex items-center justify-center gap-2 text-sm">
-                      <span className="font-medium">
-                        {selectedPositon?.position.publicKey
-                          ? `Position Address: ${truncate(selectedPositon?.position.publicKey.toString(), 6)}`
-                          : ''}
-                      </span>
-                    </div>
+                    {data.result?.step !== 'canceled' && (
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <span className="font-medium">
+                          {selectedPositon?.position.publicKey
+                            ? `Position Address: ${truncate(selectedPositon?.position.publicKey.toString(), 6)}`
+                            : ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </motion.div>
@@ -520,29 +534,29 @@ export function MeteoraLpManager({
 
                   <div className="space-y-1">
                     <h3 className="text-lg font-medium">
-                      Changes Made Successfully!
+                      Successfully{' '}
+                      {action === 'close'
+                        ? 'Closed the Position'
+                        : action === 'claimLMReward'
+                          ? 'Claimed Rewards'
+                          : action === 'claimSwapFee'
+                            ? 'Claimed Swap Fee'
+                            : ''}
+                      !
                     </h3>
                     <div className="flex items-center justify-center gap-2 text-sm">
-                      <span className="font-medium">
-                        <span className="font-medium">
-                        Successfully {action === 'close' ? "Closed the Position" : 
-                        action === 'claimLMReward' ? "Claimed Rewards" :
-                        action === 'claimSwapFee' ? "Claimed Swap Fee" : ''}
+                      Signature:{' '}
+                      <a
+                        href={`https://solscan.io/tx/${data?.result?.signature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-primary hover:underline"
+                      >
+                        <span className="font-mono">
+                          {truncate(data?.result?.signature ?? '', 8)}
                         </span>
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">
-                        Signature:{' '}
-                        <Link
-                          href={`https://solscan.io/tx/${data.result.signature}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
-                        >
-                          {data.result.signature?.toString().slice(0, 8)}...
-                          {data.result.signature?.toString().slice(-8)}
-                        </Link>
-                      </span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
                     </div>
                   </div>
                 </div>

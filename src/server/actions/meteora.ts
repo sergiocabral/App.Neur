@@ -609,10 +609,9 @@ export async function getAllLbPairPositionForOwner(extraData: {
     },
   );
 
-  const { errors, data } = await result.json();
+  const { data } = await result.json();
   const allLbPairs: PublicKey[] = [];
 
-  console.log("Here's the data: ", data);
   if (data.meteora_dlmm_Position.length > 0) {
     for (let index = 0; index < data.meteora_dlmm_Position.length; index++) {
       const position = data.meteora_dlmm_Position[index];
