@@ -236,3 +236,16 @@ enum PaymentStatus {
   FAILED
   PENDING
 }
+
+model Token {
+  id              String  @id @default(cuid())
+  symbol          String
+  name            String?
+  imageUrl        String?
+  contractAddress String  @unique
+  decimals        Int?
+  updatedAt       DateTime @updatedAt
+  createdAt       DateTime @default(now()) 
+
+  @@map("tokens")
+}

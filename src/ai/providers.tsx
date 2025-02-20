@@ -9,8 +9,10 @@ import { Card } from '@/components/ui/card';
 import { actionTools } from './generic/action';
 import { jinaTools } from './generic/jina';
 import { telegramTools } from './generic/telegram';
+import { twitterTools } from './generic/twitter';
 import { utilTools } from './generic/util';
 import { birdeyeTools } from './solana/birdeye';
+import { bundleTools } from './solana/bundle';
 import { chartTools } from './solana/chart';
 import { cookietools } from './solana/cookie';
 import { definedTools } from './solana/defined-fi';
@@ -140,8 +142,10 @@ export const defaultTools: Record<string, ToolConfig> = {
   ...utilTools,
   ...chartTools,
   ...telegramTools,
+  ...bundleTools,
   ...birdeyeTools,
   ...cookietools,
+  ...twitterTools,
 };
 
 export const coreTools: Record<string, ToolConfig> = {
@@ -202,6 +206,11 @@ export const toolsets: Record<
     tools: ['cookieTools'],
     description:
       'Tools for retrieving information about Solana AI Agents, and Tweets related to Agents.',
+  },
+  bundleTools: {
+    tools: ['bundleTools'],
+    description:
+      'Tools to analyze potential bundles and snipers for a contracts.',
   },
 };
 

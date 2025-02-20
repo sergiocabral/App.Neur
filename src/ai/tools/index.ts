@@ -3,6 +3,7 @@ import { DataStreamWriter } from 'ai';
 import { ZodType, ZodTypeAny, ZodTypeDef } from 'zod';
 
 import { allBirdeyeTools } from './birdeye';
+import { allBundleTools } from './bundle';
 import { allChartTools } from './chart';
 import { createAction } from './create-action';
 import { definedFiTools } from './defined-fi';
@@ -12,11 +13,12 @@ import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
 import { meteoraLp } from './manage-meteora-lp';
 import { meteoraPosition } from './meteora';
-import { allSearchTokenTools, searchTokenByName } from './search-token';
+import { allSearchTokenTools } from './search-token';
 import { allSolanaTools } from './solana';
 import { swapTokens } from './swap';
-import { allTelegramTools, sendTelegramNotification } from './telegram';
+import { allTelegramTools } from './telegram';
 import { transferTokens } from './transfer';
+import { allTwitterTools } from './twitter';
 
 interface ToolMetadata {
   description: string;
@@ -59,6 +61,8 @@ export const allTools: Record<string, ToolConfig> = {
   ...allTelegramTools,
   ...allSolanaTools,
   ...allSearchTokenTools,
+  ...allBundleTools,
+  ...allTwitterTools,
 };
 
 export const wrapTools = (
