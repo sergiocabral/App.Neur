@@ -231,10 +231,7 @@ async function handleConfirmation(
         ...result,
         step: 'completed',
       };
-      const updatedToolCall = diffObjects(
-        finalToolResults,
-        updatedToolCallResults,
-      );
+
       streamUpdate({
         stream: dataStream,
         update: {
@@ -242,7 +239,7 @@ async function handleConfirmation(
           status: 'idle',
           toolCallId: toolUpdateMessage.toolCallId ?? null,
           content: {
-            ...updatedToolCall,
+            ...updatedToolCallResults,
           },
         },
       });

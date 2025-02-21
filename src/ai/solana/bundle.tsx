@@ -59,7 +59,8 @@ export const bundleTools = {
         if (!analysis?.data) {
           return {
             success: false,
-            error: 'Unable to fetch data. Please make sure it is a pump.fun launch.',
+            error:
+              'Unable to fetch data. Please make sure it is a pump.fun launch.',
           };
         }
 
@@ -82,7 +83,8 @@ export const bundleTools = {
       } catch (error) {
         return {
           success: false,
-          error: 'Unable to fetch data. Please make sure it is a pump.fun launch.',
+          error:
+            'Unable to fetch data. Please make sure it is a pump.fun launch.',
         };
       }
     },
@@ -101,7 +103,9 @@ export const bundleTools = {
           <div className="relative overflow-hidden rounded-2xl bg-muted p-4">
             <div className="flex items-center gap-3">
               <p className="text-md text-center">
-                {'Unable to fetch data. Please make sure it is a pump.fun token.'}
+                {
+                  'Unable to fetch data. Please make sure it is a pump.fun token.'
+                }
               </p>
             </div>
           </div>
@@ -121,19 +125,27 @@ export const bundleTools = {
         },
         {
           name: 'Total SOL Spent',
-          value: analysis?.total_percentage_bundled ? `${analysis.total_percentage_bundled.toFixed(2)}%` : 'N/A',
+          value: analysis?.total_percentage_bundled
+            ? `${analysis.total_percentage_bundled.toFixed(2)}%`
+            : 'N/A',
         },
         {
           name: 'Bundled Total',
-          value: analysis?.total_percentage_bundled ? `${analysis.total_percentage_bundled.toFixed(2)}%` : 'N/A',
+          value: analysis?.total_percentage_bundled
+            ? `${analysis.total_percentage_bundled.toFixed(2)}%`
+            : 'N/A',
         },
         {
           name: 'Held Percentage',
-          value: analysis?.total_holding_percentage ? `${analysis.total_holding_percentage.toFixed(2)}%` : 'N/A',
+          value: analysis?.total_holding_percentage
+            ? `${analysis.total_holding_percentage.toFixed(2)}%`
+            : 'N/A',
         },
         {
           name: 'Held Tokens',
-          value: analysis?.total_holding_amount ? formatNumber(analysis.total_holding_amount) : 'N/A',
+          value: analysis?.total_holding_amount
+            ? formatNumber(analysis.total_holding_amount)
+            : 'N/A',
         },
         {
           name: 'Bonded',
@@ -171,7 +183,9 @@ export const bundleTools = {
             <BundleList bundles={analysis.bundles} />
           ) : (
             <div className="rounded-lg bg-muted/50 p-4">
-              <p className="text-sm text-muted-foreground">No bundles detected</p>
+              <p className="text-sm text-muted-foreground">
+                No bundles detected
+              </p>
             </div>
           )}
         </div>

@@ -41,8 +41,12 @@ export const getTokensByAddresses = cache(
           where: { contractAddress: { in: contractAddresses } },
         });
 
-        const foundAddresses = new Set(tokens.map((token) => token.contractAddress));
-        const missingAddresses = contractAddresses.filter((address) => !foundAddresses.has(address));
+        const foundAddresses = new Set(
+          tokens.map((token) => token.contractAddress),
+        );
+        const missingAddresses = contractAddresses.filter(
+          (address) => !foundAddresses.has(address),
+        );
 
         return {
           success: true,

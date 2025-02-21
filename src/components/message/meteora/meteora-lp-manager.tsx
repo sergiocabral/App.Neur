@@ -7,15 +7,23 @@ import { isNull } from 'lodash';
 import { ArrowLeft, ExternalLink, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { CardFooter } from '@/components/ui/card';
 import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -75,6 +83,9 @@ export function MeteoraLpManager({
       data.result?.step === 'completed',
   );
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
   useEffect(() => {
     if (data.result?.positions) {
       setAllPositions(data.result?.positions);
@@ -88,12 +99,6 @@ export function MeteoraLpManager({
         setSelectedPositon(foundSelectedPosition);
       }
     }
-
-    setOverlay(
-      data.result?.step === 'processing' ||
-        data.result?.step === 'canceled' ||
-        data.result?.step === 'completed',
-    );
 
     setRewardOne(
       Number.parseInt(
@@ -138,6 +143,14 @@ export function MeteoraLpManager({
   }, [data.result?.positions, data.result?.selectedPositionAddress]);
 
   useEffect(() => {
+    setOverlay(
+      data.result?.step === 'processing' ||
+        data.result?.step === 'canceled' ||
+        data.result?.step === 'completed',
+    );
+  }, [data.result?.step]);
+
+  useEffect(() => {
     if (selectedPositon?.mintX && selectedPositon.mintY) {
       const fetchTokenData = async () => {
         const tokenXData = await getTokenData({ mint: selectedPositon.mintX });
@@ -175,8 +188,11 @@ export function MeteoraLpManager({
     }
   };
 
-  const handleConfirmation = async () => {
+  const handleConfirmation = async (
+    action: 'close' | 'claimLMReward' | 'claimSwapFee' | null,
+  ) => {
     try {
+      setAction(action);
       setIsLoading(true);
       await addToolResult({
         step: 'confirmed',
@@ -192,33 +208,54 @@ export function MeteoraLpManager({
   };
 
   const handleCancel = async () => {
-    if (action) {
-      setAction(null);
-    } else {
-      try {
-        setIsLoading(true);
-        addToolResult({
-          step: 'canceled',
-        });
-      } finally {
-        setIsLoading(false);
-      }
+    try {
+      setIsLoading(true);
+      addToolResult({
+        step: 'canceled',
+      });
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const paginatedPositions = allPositions?.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+
+  const totalPages = allPositions
+    ? Math.ceil(allPositions.length / itemsPerPage)
+    : 0;
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
     <Card className="overflow-hidden">
       <CardContent className="pt-6">
         {/* DLMM Position Selection */}
+        {!overlay && !allPositions && (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="text-muted-foreground">
+              You do not have any open positions yet.
+            </div>
+          </div>
+        )}
         {!overlay && !selectedPositon && allPositions && (
           <>
             <CardHeader>
               <CardTitle>Your Positions</CardTitle>
-              <CardDescription>
-                Select the position you wanna know more about!
-              </CardDescription>
+              <CardDescription>Select a position for details.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
+              {allPositions?.length === 0 && (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="text-muted-foreground">
+                    You do not have any open positions yet.
+                  </div>
+                </div>
+              )}
               {!allPositions ? (
                 <>
                   <Skeleton className="h-[68px] w-full rounded-lg" />
@@ -226,24 +263,75 @@ export function MeteoraLpManager({
                   <Skeleton className="h-[68px] w-full rounded-lg" />
                 </>
               ) : (
-                allPositions?.map((position) => (
-                  <div
-                    key={position.position.publicKey.toString()}
-                    className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                    onClick={() => handlePositionSelect(position)}
-                  >
-                    <div>
-                      <div className="font-medium">{position.poolName}</div>
-                      <div className="text-sm text-muted-foreground">
-                        Position Address:{' '}
-                        {position.position.publicKey.toString().slice(0, 8)}...
-                        {position.position.publicKey.toString().slice(-8)} •
-                        Pool Address: {position.poolAddress.slice(0, 8)}...
-                        {position.poolAddress.toString().slice(-8)}
+                <>
+                  {paginatedPositions?.map((position) => (
+                    <div
+                      key={position.position.publicKey.toString()}
+                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                      onClick={() => handlePositionSelect(position)}
+                    >
+                      <div>
+                        <div className="font-medium">{position.poolName}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Position Address:{' '}
+                          {position.position.publicKey.toString().slice(0, 8)}
+                          ...
+                          {position.position.publicKey.toString().slice(-8)} •
+                          Pool Address: {position.poolAddress.slice(0, 8)}...
+                          {position.poolAddress.toString().slice(-8)}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))
+                  ))}
+
+                  {allPositions && allPositions.length > itemsPerPage && (
+                    <div className="mt-4">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (currentPage > 1)
+                                  handlePageChange(currentPage - 1);
+                              }}
+                            />
+                          </PaginationItem>
+
+                          {Array.from(
+                            { length: totalPages },
+                            (_, i) => i + 1,
+                          ).map((page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                href="#"
+                                isActive={currentPage === page}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handlePageChange(page);
+                                }}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (currentPage < totalPages)
+                                  handlePageChange(currentPage + 1);
+                              }}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </>
@@ -373,63 +461,6 @@ export function MeteoraLpManager({
                       Pool Address: {selectedPositon.poolAddress}
                     </div>
                   </div>
-                  <div className="flex gap-2">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => setAction('claimSwapFee')}
-                            variant="default"
-                            disabled={action != null || isLoading}
-                          >
-                            {isLoading ? 'Processing...' : 'Claim Swap Fee'}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Claim accumulated swap fees from your position</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    {!isNull(rewardOne) &&
-                      !isNull(rewardTwo) &&
-                      rewardOne > 0 &&
-                      rewardTwo > 0 && (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                onClick={() => setAction('claimLMReward')}
-                                variant="default"
-                                disabled={action != null || isLoading}
-                              >
-                                {isLoading ? 'Processing...' : 'Claim Rewards'}
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>
-                                Claim accumulated LM rewards from your position
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      )}
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => setAction('close')}
-                            variant="default"
-                            disabled={action != null || isLoading}
-                          >
-                            {isLoading ? 'Processing...' : 'Close Position'}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Close your position and withdraw all liquidity</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -551,25 +582,48 @@ export function MeteoraLpManager({
       {data.result?.step === 'awaiting-confirmation' && (
         <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
           <div className="flex items-center justify-between gap-2">
-            <Button onClick={handleCancel} variant="default">
-              Cancel
-            </Button>
-            {selectedPositon && action && (
-              <Button onClick={handleConfirmation} variant="default">
-                Confirm
+            {!selectedPositon && (
+              <Button onClick={handleCancel} variant="default">
+                Cancel
               </Button>
             )}
-          </div>
-          <div className="text-sm text-muted-foreground">
-            {action
-              ? `Ready to ${
-                  action === 'close'
-                    ? 'close your position?'
-                    : action === 'claimLMReward'
-                      ? 'claim your rewards?'
-                      : 'claim your swap fee?'
-                }`
-              : ''}
+
+            {selectedPositon && (
+              <div className="flex gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => handleConfirmation('claimSwapFee')}
+                        variant="default"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Processing...' : 'Claim Swap Fee'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Claim accumulated swap fees from your position</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={() => handleConfirmation('close')}
+                        variant="default"
+                        disabled={isLoading}
+                      >
+                        {isLoading ? 'Processing...' : 'Close Position'}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Close your position and withdraw all liquidity</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+            )}
           </div>
         </CardFooter>
       )}

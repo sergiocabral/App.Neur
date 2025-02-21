@@ -5,14 +5,7 @@ import { useEffect, useState } from 'react';
 import Image from 'next/image';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-  ArrowLeft,
-  ArrowRight,
-  ExternalLink,
-  Info,
-  Loader2,
-  X,
-} from 'lucide-react';
+import { ArrowLeft, ExternalLink, Info, Loader2, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -26,6 +19,14 @@ import {
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -36,6 +37,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useDlmmForToken } from '@/hooks/use-pools-for-token';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
+import { formatNumber } from '@/lib/format';
 import { truncate } from '@/lib/utils/format';
 import { searchJupiterTokenMint } from '@/server/actions/jupiter';
 import {
@@ -65,11 +67,18 @@ interface MeteoraPositionCardProps {
   toolCallId: string;
 }
 
+const ITEMS_PER_PAGE = 5;
+
 export function MeteoraPositionCard({
   data,
   addToolResult,
 }: MeteoraPositionCardProps) {
-  // Local state for form data
+  // Pagination states
+  const [tokenPage, setTokenPage] = useState(1);
+  const [groupPage, setGroupPage] = useState(1);
+  const [poolPage, setPoolPage] = useState(1);
+
+  // Original states
   const [selectedToken, setSelectedToken] = useState<Token | null>(
     data.result?.token || null,
   );
@@ -92,6 +101,12 @@ export function MeteoraPositionCard({
       data.result?.step === 'completed',
   );
 
+  // Reset pagination when selections change
+  useEffect(() => {
+    if (!selectedToken) setGroupPage(1);
+    if (!selectedGroup) setPoolPage(1);
+  }, [selectedToken, selectedGroup]);
+
   // Sync with incoming result changes
   useEffect(() => {
     if (data.result?.token?.mint !== selectedToken?.mint) {
@@ -100,6 +115,9 @@ export function MeteoraPositionCard({
       setSelectedGroup(null);
       setSelectedPair(null);
       setSwapHalf(false);
+      setTokenPage(1);
+      setGroupPage(1);
+      setPoolPage(1);
     }
     setOverlay(
       data.result?.step === 'processing' ||
@@ -113,6 +131,34 @@ export function MeteoraPositionCard({
   const { isLoading: isDlmmLoading, data: dlmmGroups } = useDlmmForToken(
     selectedToken?.mint,
   );
+
+  // Pagination calculations
+  const paginatedTokens = walletPortfolio?.tokens.slice(
+    (tokenPage - 1) * ITEMS_PER_PAGE,
+    tokenPage * ITEMS_PER_PAGE,
+  );
+
+  const paginatedGroups = dlmmGroups?.slice(
+    (groupPage - 1) * ITEMS_PER_PAGE,
+    groupPage * ITEMS_PER_PAGE,
+  );
+
+  const paginatedPools = selectedGroup?.pairs?.slice(
+    (poolPage - 1) * ITEMS_PER_PAGE,
+    poolPage * ITEMS_PER_PAGE,
+  );
+
+  const totalTokenPages = walletPortfolio?.tokens
+    ? Math.ceil(walletPortfolio.tokens.length / ITEMS_PER_PAGE)
+    : 0;
+
+  const totalGroupPages = dlmmGroups
+    ? Math.ceil(dlmmGroups.length / ITEMS_PER_PAGE)
+    : 0;
+
+  const totalPoolPages = selectedGroup?.pairs
+    ? Math.ceil(selectedGroup.pairs.length / ITEMS_PER_PAGE)
+    : 0;
 
   const handleTokenSelect = async (token: Token) => {
     try {
@@ -296,36 +342,81 @@ export function MeteoraPositionCard({
                     <Skeleton className="h-[68px] w-full rounded-lg" />
                   </>
                 ) : (
-                  walletPortfolio?.tokens.map((token) =>
-                    token ? (
-                      <div
-                        key={token.mint}
-                        className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                        onClick={() => handleTokenSelect(token)}
-                      >
-                        <div className="flex items-center gap-3">
-                          {token.imageUrl && (
-                            <Image
-                              src={token.imageUrl || '/placeholder.svg'}
-                              alt={token.symbol || ''}
-                              width={32}
-                              height={32}
-                              className="rounded-full"
-                            />
-                          )}
-                          <div>
-                            <div className="font-medium">{token.symbol}</div>
-                            <div className="text-sm text-muted-foreground">
-                              Balance: {token.balance ?? 0}
+                  <>
+                    {paginatedTokens?.map((token) =>
+                      token ? (
+                        <div
+                          key={token.mint}
+                          className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                          onClick={() => handleTokenSelect(token)}
+                        >
+                          <div className="flex items-center gap-3">
+                            {token.imageUrl && (
+                              <Image
+                                src={token.imageUrl || '/placeholder.svg'}
+                                alt={token.symbol || ''}
+                                width={32}
+                                height={32}
+                                className="rounded-full"
+                              />
+                            )}
+                            <div>
+                              <div className="font-medium">{token.symbol}</div>
+                              <div className="text-sm text-muted-foreground">
+                                Balance: {token.balance ?? 0}
+                              </div>
                             </div>
                           </div>
+                          {isLoading && (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
                         </div>
-                        {isLoading && (
-                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                        )}
-                      </div>
-                    ) : null,
-                  )
+                      ) : null,
+                    )}
+
+                    {totalTokenPages > 1 && (
+                      <Pagination className="mt-4">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (tokenPage > 1) setTokenPage(tokenPage - 1);
+                              }}
+                            />
+                          </PaginationItem>
+                          {Array.from(
+                            { length: totalTokenPages },
+                            (_, i) => i + 1,
+                          ).map((page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                href="#"
+                                isActive={tokenPage === page}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setTokenPage(page);
+                                }}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (tokenPage < totalTokenPages)
+                                  setTokenPage(tokenPage + 1);
+                              }}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </>
                 )}
               </CardContent>
             </>
@@ -357,21 +448,66 @@ export function MeteoraPositionCard({
                     <Skeleton className="h-[68px] w-full rounded-lg" />
                   </>
                 ) : (
-                  dlmmGroups?.map((group) => (
-                    <div
-                      key={group.name}
-                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                      onClick={() => handleGroupSelect(group)}
-                    >
-                      <div>
-                        <div className="font-medium">{group.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          TVL: ${group.totalTvl.toFixed(0).toLocaleString()} •
-                          APR: {group.maxApr.toFixed(2)}%
+                  <>
+                    {paginatedGroups?.map((group) => (
+                      <div
+                        key={group.name}
+                        className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                        onClick={() => handleGroupSelect(group)}
+                      >
+                        <div>
+                          <div className="font-medium">{group.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            TVL: {formatNumber(group.totalTvl, 'currency', 0)} •
+                            APR: {group.maxApr.toFixed(2)}%
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {totalGroupPages > 1 && (
+                      <Pagination className="mt-4">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (groupPage > 1) setGroupPage(groupPage - 1);
+                              }}
+                            />
+                          </PaginationItem>
+                          {Array.from(
+                            { length: totalGroupPages },
+                            (_, i) => i + 1,
+                          ).map((page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                href="#"
+                                isActive={groupPage === page}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setGroupPage(page);
+                                }}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (groupPage < totalGroupPages)
+                                  setGroupPage(groupPage + 1);
+                              }}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </>
                 )}
               </CardContent>
             </>
@@ -405,24 +541,66 @@ export function MeteoraPositionCard({
                     <Skeleton className="h-[68px] w-full rounded-lg" />
                   </>
                 ) : (
-                  selectedGroup.pairs?.map((pair) => (
-                    <div
-                      key={pair.address}
-                      className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
-                      onClick={() => handlePairSelect(pair)}
-                    >
-                      <div>
-                        <div className="font-medium">{pair.name}</div>
-                        <div className="text-sm text-muted-foreground">
-                          TVL: $
-                          {Number.parseFloat(pair.liquidity)
-                            .toFixed(0)
-                            .toLocaleString()}{' '}
-                          • APR: {pair.apr.toFixed(2)}%
+                  <>
+                    {paginatedPools?.map((pair) => (
+                      <div
+                        key={pair.address}
+                        className="flex cursor-pointer items-center justify-between rounded-lg border p-3 hover:bg-muted/50"
+                        onClick={() => handlePairSelect(pair)}
+                      >
+                        <div>
+                          <div className="font-medium">{pair.name}</div>
+                          <div className="text-sm text-muted-foreground">
+                            TVL: {formatNumber(pair.liquidity, 'currency', 0)} •
+                            APR: {pair.apr.toFixed(2)}%
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))
+                    ))}
+
+                    {totalPoolPages > 1 && (
+                      <Pagination className="mt-4">
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (poolPage > 1) setPoolPage(poolPage - 1);
+                              }}
+                            />
+                          </PaginationItem>
+                          {Array.from(
+                            { length: totalPoolPages },
+                            (_, i) => i + 1,
+                          ).map((page) => (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                href="#"
+                                isActive={poolPage === page}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  setPoolPage(page);
+                                }}
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          ))}
+                          <PaginationItem>
+                            <PaginationNext
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                if (poolPage < totalPoolPages)
+                                  setPoolPage(poolPage + 1);
+                              }}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </>
                 )}
               </CardContent>
             </>
