@@ -69,7 +69,12 @@ export const wrapTools = (
   props: WrappedToolProps,
   toolsRequired?: string[],
 ) => {
-  const toolNames = toolsRequired ? toolsRequired : Object.keys(allTools);
+  const minTools =
+    !toolsRequired || toolsRequired.length > 0
+      ? toolsRequired
+      : ['searchTokenByName'];
+  const toolNames = minTools ? minTools : Object.keys(allTools);
+
   return toolNames.reduce(
     (acc, toolName) => {
       if (allTools[toolName]) {
