@@ -63,6 +63,19 @@ function shouldScaleLine(
   return interval == INTERVAL.DAYS && timeRange != undefined;
 }
 
+function computeMinMove(data: Candle[]) {
+  const minMove = Math.min(
+    ...data
+      .slice(1)
+      .map((d, i) => Math.abs(d.close - data[i].close))
+      .filter((diff) => diff > 0),
+  );
+
+  return minMove < 0.01
+    ? Math.pow(10, Math.floor(Math.log10(minMove)))
+    : 0.01;
+}
+
 enum CHART_TYPES {
   CANDLE,
   LINE,
@@ -102,22 +115,9 @@ export default function LightweightChart({
     }
   }
 
-  const computeMinMove = useCallback((): number => {
-    const minMove = Math.min(
-      ...data
-        .slice(1)
-        .map((d, i) => Math.abs(d.close - data[i].close))
-        .filter((diff) => diff > 0),
-    );
-
-    return minMove < 0.01
-      ? Math.pow(10, Math.floor(Math.log10(minMove)))
-      : 0.01;
-  }, [data]);
-
   const addCandleSeries = useCallback(() => {
     if (chartRef.current) {
-      const computedMinMove = computeMinMove();
+      const computedMinMove = computeMinMove(data);
       seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
         priceFormat: {
           type: 'price',
@@ -132,11 +132,11 @@ export default function LightweightChart({
       });
       seriesRef.current.setData(data);
     }
-  }, [computeMinMove, data]);
+  }, [data]);
 
   const addLineSeries = useCallback(() => {
     if (chartRef.current) {
-      const computedMinMove = computeMinMove();
+      const computedMinMove = computeMinMove(data);
       const lineData = candleArrayToLine(data);
       seriesRef.current = chartRef.current.addSeries(LineSeries, {
         priceFormat: {
@@ -155,7 +155,7 @@ export default function LightweightChart({
       }
       seriesRef.current.setData(lineData);
     }
-  }, [computeMinMove, data]);
+  }, [data, interval, timeRange]);
 
   useEffect(() => {
     if (containerRef.current) {
