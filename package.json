@@ -80,7 +80,7 @@
     "recharts": "^2.15.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "solana-agent-kit": "github:slimeonmyhead/solana-agent-kit#8ab336006c3e8cdd70058b5ee253fbeb9ccb01ff",
+    "solana-agent-kit": "github:slimeonmyhead/solana-agent-kit#1f3160d17b90cadae020a4c69ce9e803ed4b3fb0",
     "sonner": "^1.7.4",
     "swr": "^2.3.2",
     "tailwind-merge": "^2.6.0",
