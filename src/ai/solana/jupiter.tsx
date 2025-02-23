@@ -9,6 +9,7 @@ import {
   getJupiterTokenPrice,
   searchJupiterTokens,
 } from '@/server/actions/jupiter';
+import { createOrUpdateTokens } from '@/server/actions/token';
 
 import { JupiterToken } from '../tools/search-token';
 
@@ -116,6 +117,16 @@ export const jupiterTools = {
       try {
         const tokens = await searchJupiterTokens(query);
         const searchQuery = query.toLowerCase();
+
+        // Update token table in DB with new tokens
+        createOrUpdateTokens(
+          tokens.map((token) => ({
+            symbol: token.symbol,
+            contractAddress: token.address,
+            imageUrl: token.logoURI,
+            name: token.name,
+          })),
+        );
 
         // Search and rank tokens
         const results = tokens

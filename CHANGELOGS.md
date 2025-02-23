@@ -1,5 +1,17 @@
 # Changelogs
 
+## v0.3.4
+
+- Fix bug with missing relevant messages
+- Handle error when unable to fetch bundle data
+
+## v0.3.3
+
+- Cookie.fun integration
+- Bundle checker for Pumpfun tokens
+- UI bug fixes
+- Fixed bug allowing updates to arbitrary user fields
+
 ## v0.3.2
 
 - Handle missing stats when using the NFT collectionStats tool on new collections

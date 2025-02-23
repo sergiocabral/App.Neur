@@ -2,11 +2,23 @@
 
 import { create } from 'zustand';
 
-import { CreateActionDataResult, SwapDataResult } from '@/types/stream';
+import {
+  CreateActionDataResult,
+  MeteoraPositionResult,
+  MeteoraPositionUpdateResult,
+  SwapDataResult,
+  TransferDataResult,
+} from '@/types/stream';
 
 export interface StreamingState {
   status: 'idle' | 'streaming' | 'completed' | string;
-  result: SwapDataResult | CreateActionDataResult | null;
+  result:
+    | SwapDataResult
+    | CreateActionDataResult
+    | TransferDataResult
+    | MeteoraPositionResult
+    | MeteoraPositionUpdateResult
+    | null;
   toolCallId: string | null;
 }
 
