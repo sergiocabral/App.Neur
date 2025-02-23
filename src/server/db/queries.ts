@@ -15,10 +15,12 @@ import { NewAction } from '@/types/db';
  */
 export async function dbGetConversation({
   conversationId,
+  userId,
   includeMessages,
   isServer,
 }: {
   conversationId: string;
+  userId: string;
   includeMessages?: boolean;
   isServer?: boolean;
 }) {
@@ -26,13 +28,13 @@ export async function dbGetConversation({
     // Mark conversation as read if user is fetching
     if (!isServer) {
       return await prisma.conversation.update({
-        where: { id: conversationId },
+        where: { id: conversationId, userId },
         data: { lastReadAt: new Date() },
         include: includeMessages ? { messages: true } : undefined,
       });
     } else {
       return await prisma.conversation.findUnique({
-        where: { id: conversationId },
+        where: { id: conversationId, userId },
         include: includeMessages ? { messages: true } : undefined,
       });
     }

@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 import { verifyUser } from '@/server/actions/user';
-import {
-  dbGetConversation,
-  dbGetConversationMessages,
-} from '@/server/db/queries';
+import { dbGetConversationMessages } from '@/server/db/queries';
 
 export async function GET(
   req: NextRequest,
