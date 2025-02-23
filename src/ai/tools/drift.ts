@@ -1,10 +1,12 @@
-import { tool } from 'ai';
+import { generateObject, tool } from 'ai';
 import { z } from 'zod';
 
 import { streamUpdate } from '@/lib/utils';
 import { retrieveAgentKit } from '@/server/actions/ai';
+import { MainnetPerpMarketsList, PerpMarketType, tradeDriftPerpAccountAction } from '@/server/actions/drift';
 
-import { WrappedToolProps } from '.';
+import { ToolConfig, WrappedToolProps } from '.';
+import { openai } from '../providers';
 import { driftTools } from '../solana/drift';
 
 const getDriftAPY = () => {
@@ -65,7 +67,6 @@ const performCreateDriftAccount = async ({
     }
 
     const result = await agent.createDriftUserAccount(amount, symbol);
-
     return { success: true, result: result };
   } catch (error) {
     return {
@@ -196,6 +197,96 @@ const createDriftAccount = () => {
     metadata,
     buildTool,
     confirm: performCreateDriftAccount,
+  };
+};
+
+export const tradeDriftPerpAccount = (): ToolConfig => {
+  const metadata = {
+    description:
+      'Tool to Trade a perpetual account on Drift protocol.',
+    parameters: z.object({
+      message: z
+        .string()
+        .optional()
+        .or(z.literal(''))
+        .describe('Message that the user sent')
+      }),
+    updateParameters: z.object({
+      amount: z.number().optional().describe('The amount to trade'),
+      symbol: z
+        .string()
+        .optional()
+        .describe('The market symbol to trade (e.g. SOL-PERP)'),
+      action: z
+        .enum(['long', 'short'])
+        .optional()
+        .describe('The trade direction'),
+      type: z.enum(['market', 'limit']).optional().describe('The order type'),
+      price: z.number().optional().describe('The price of the trade'),
+    }),
+  };
+
+  const buildTool = ({
+    dataStream = undefined,
+    abortData,
+    extraData: { askForConfirmation, agentKit },
+  }: WrappedToolProps) =>
+    tool({
+      ...metadata,
+      execute: async ({ message }, { toolCallId }) => {
+        const updatedToolCall: {
+          toolCallId: string;
+          status: 'streaming' | 'idle';
+          step:  
+          | 'market-selection'
+          | 'inputs'
+          | 'awaiting-confirmation'
+          | 'confirmed'
+          | 'processing'
+          | 'completed'
+          | 'canceled';
+          amount?: number | null;
+          symbol?: string | null;
+          action?: 'long' | 'short' | null;
+          type?: 'market' | 'limit' | null;
+          price?: number | null;
+          markets?: PerpMarketType[];
+        } = {
+          toolCallId,
+          status: 'streaming',
+          step: 'market-selection',
+        };
+
+        streamUpdate({
+          stream: dataStream,
+          update: {
+            type: 'stream-result-data',
+            status: 'idle',
+            toolCallId,
+            content: {
+              action: updatedToolCall.action || undefined,
+              amount: updatedToolCall.amount || undefined,
+              price: updatedToolCall.price || undefined,
+              step: updatedToolCall.step || 'market-selection',
+            },
+          },
+        });
+
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            ...updatedToolCall,
+            step: 'awaiting-market-selection',
+          },
+        };
+      },
+    });
+
+  return {
+    metadata,
+    buildTool,
+    confirm: tradeDriftPerpAccountAction,
   };
 };
 

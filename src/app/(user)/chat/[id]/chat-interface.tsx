@@ -65,6 +65,7 @@ import { DataStreamDelta } from '@/types/stream';
 import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { ConversationInput } from '../../home/conversation-input';
+import { DriftPrepTrade } from '@/components/message/drift/drfitPrepTrade';
 
 const TOOL_COMPONENTS: Record<
   string,
@@ -104,6 +105,10 @@ const TOOL_COMPONENTS: Record<
   manageMeteoraLiquidityPositions: {
     component: MeteoraLpManager,
     displayName: '💧 Manage Meteora LPs',
+  },
+  tradeDriftPerpAccount: {
+    component: DriftPrepTrade,
+    displayName: '🌊 Prep trade',
   },
 };
 

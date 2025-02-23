@@ -7,7 +7,7 @@ import { allChartTools } from './chart';
 import { createAction } from './create-action';
 import { definedFiTools } from './defined-fi';
 import { allDexscreenerTools } from './dexscreener';
-import { allDriftTools } from './drift';
+import { allDriftTools, tradeDriftPerpAccount } from './drift';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
@@ -52,6 +52,7 @@ export const allTools: Record<string, ToolConfig> = {
   createAction: createAction(),
   openMeteoraLiquidityPosition: meteoraPosition(),
   manageMeteoraLiquidityPositions: meteoraLp(),
+  tradeDriftPerpAccount: tradeDriftPerpAccount(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,
