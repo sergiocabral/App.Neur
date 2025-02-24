@@ -46,7 +46,8 @@ export const getDriftAccountInfo = (): ToolConfig => {
             toolCallId: toolCallId,
             status: 'completed',
             content: {
-              ...result,
+              ...result.result,
+              
               step: 'completed',
             },
           },
