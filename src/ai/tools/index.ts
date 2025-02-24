@@ -21,6 +21,8 @@ import { swapTokens } from './swap';
 import { allTelegramTools } from './telegram';
 import { transferTokens } from './transfer';
 import { allTwitterTools } from './twitter';
+import { createDriftAccount } from './drift/create-account';
+import { getDriftAccountInfo } from './drift/get-account-info';
 
 interface ToolMetadata {
   description: string;
@@ -54,6 +56,8 @@ export const allTools: Record<string, ToolConfig> = {
   createAction: createAction(),
   openMeteoraLiquidityPosition: meteoraPosition(),
   manageMeteoraLiquidityPositions: meteoraLp(),
+  createDriftAccount: createDriftAccount(),
+  getDriftAccountInfo: getDriftAccountInfo(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,
@@ -63,7 +67,6 @@ export const allTools: Record<string, ToolConfig> = {
   ...allTelegramTools,
   ...allSolanaTools,
   ...allSearchTokenTools,
-  ...allDriftTools,
   ...allMetaplexTools,
   ...allBundleTools,
   ...allTwitterTools,
