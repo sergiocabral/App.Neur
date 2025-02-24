@@ -17,7 +17,7 @@ interface SpotPosition {
   type: string;
 }
 
-interface AccountInfoProps {
+interface AccountInfo {
   name: string;
   accountAddress: string;
   authority: string;
@@ -28,19 +28,45 @@ interface AccountInfoProps {
   spotPositions: SpotPosition[];
 }
 
+interface DriftAccountInfoProps {
+  data: {
+    success: boolean;
+    result: AccountInfo;
+  };
+  addToolResult: (result: AccountInfo) => void;
+}
+
 export default function DriftAccountInfo({
-  name,
-  accountAddress,
-  authority,
-  overallBalance,
-  settledPerpPnl,
-  lastActiveSlot,
-  perpPositions,
-  spotPositions,
-}: AccountInfoProps) {
+  data: { success, result },
+  addToolResult: _addToolResult,
+}: DriftAccountInfoProps) {
   const [showSpotPositions, setShowSpotPositions] = useState(true);
   const [showAccountDetails, setShowAccountDetails] = useState(false);
-  console.log(perpPositions);
+
+  if (!success) {
+    return (
+      <Card className="bg-destructive/10 p-6">
+        <h2 className="mb-2 text-xl font-semibold text-destructive">
+          Drift Account Retrieval Failed
+        </h2>
+        <pre className="text-sm text-destructive/80">
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      </Card>
+    );
+  }
+
+  const {
+    name,
+    accountAddress,
+    authority,
+    overallBalance,
+    settledPerpPnl,
+    lastActiveSlot,
+    perpPositions,
+    spotPositions,
+  } = result;
+
   return (
     <Card className="w-full max-w-xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <CardHeader className="pb-2">
