@@ -66,6 +66,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
   );
   const [amount, setAmount] = useState<number>();
   const [price, setPrice] = useState<number>();
+  console.log(data);
 
   const [step, setStep] = useState<
     | 'market-selection'
@@ -87,15 +88,22 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
   const [type, setType] = useState<'market' | 'limit'>();
   const [action, setAction] = useState<'long' | 'short'>();
 
+  const [overlay, setOverlay] = useState(
+    data.result?.step === 'confirmed' ||
+    data.result?.step === 'processing' ||
+    data.result?.step === 'canceled' ||
+    data.result?.step === 'completed',
+  );
+
   useEffect(() => {
     if (data.result?.step) setStep(data.result?.step);
+    setOverlay(
+      data.result?.step === 'confirmed' ||
+      data.result?.step === 'processing' ||
+      data.result?.step === 'completed' ||
+      data.result?.step === 'canceled',
+    );
   }, [data]);
-
-  const [overlay, setOverlay] = useState(
-    data.result?.step === 'processing' ||
-      data.result?.step === 'canceled' ||
-      data.result?.step === 'completed',
-  );
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -110,59 +118,63 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
       setSelectedMarket(market);
       await addToolResult({
         step: 'awaiting-confirmation',
-        marketIndex: market.marketIndex,
+        symbol: market.baseAssetSymbol,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  // const handleBack = async () => {
-  //   try {
-  //     setIsLoading(true);
-  //     if (selectedPositon) {
-  //       setSelectedPositon(null);
-  //     } else {
-  //       setSelectedPositon(null);
-  //       await addToolResult({
-  //         step: 'awaiting-confirmation',
-  //         selectedPositionAddress: undefined,
-  //       });
-  //     }
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
+  const handleBack = async () => {
+    try {
+      setIsLoading(true);
+        setAction(undefined);
+        setType(undefined);
+        setAmount(undefined);
+        setPrice(undefined);
+        setSelectedMarket(null);
+        await addToolResult({
+          step: 'awaiting-confirmation',
+        });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // const handleConfirmation = async () => {
-  //   try {
-  //     setIsLoading(true);
-  //     await addToolResult({
-  //       step: 'confirmed',
-  //       selectedPositionAddress: selectedPositon
-  //         ? selectedPositon.poolAddress
-  //         : undefined,
-  //       action: action ? action : undefined,
-  //     });
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
+  const handleConfirmation = async () => {
+    try {
+      setIsLoading(true);
+      await addToolResult({
+        step: 'confirmed',
+        amount: amount,
+        price: price ? price : undefined,
+        type: type ? type : undefined,
+        action: action ? action : undefined,
+        symbol: selectedMarket?.baseAssetSymbol,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  // const handleCancel = async () => {
-  //   if (action) {
-  //     setAction(null);
-  //   } else {
-  //     try {
-  //       setIsLoading(true);
-  //       addToolResult({
-  //         step: 'canceled',
-  //       });
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   }
-  // };
+  const handleCancel = async () => {
+    if (action) {
+      setAction(undefined);
+      setType(undefined);
+      setAmount(undefined);
+      setPrice(undefined);
+      setSelectedMarket(null);
+    } else {
+      try {
+        setIsLoading(true);
+        addToolResult({
+          step: 'canceled',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -231,7 +243,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {}}
+              onClick={handleBack}
               className="mb-4 h-8 px-2"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
@@ -335,7 +347,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
         )}
       </CardContent>
 
-      {/* {overlay && data.result?.step != 'completed' && (
+      {overlay && data.result?.step != 'completed' && (
         <CardContent className="space-y-1">
           <div className="flex flex-col gap-4">
             <AnimatePresence mode="wait">
@@ -373,9 +385,10 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
                     )}
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
-                        {selectedPositon?.position.publicKey
-                          ? `Position Address: ${truncate(selectedPositon?.position.publicKey.toString(), 6)}`
-                          : ''}
+                        {`Open a ${
+                          action === 'long' ? 'long' : 'short'
+                        } position on ${selectedMarket?.symbol} at ${
+                          type === 'market' ? 'market price' : `price: ${price} ${selectedMarket?.baseAssetSymbol}`}`}
                       </span>
                     </div>
                   </div>
@@ -412,7 +425,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
 
                   <div className="space-y-1">
                     <h3 className="text-lg font-medium">
-                      Changes Made Successfully!
+                      Trade Executed Successfully!
                     </h3>
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
@@ -446,7 +459,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
             <Button onClick={handleCancel} variant="default">
               Cancel
             </Button>
-            {selectedPositon && action && (
+            {selectedMarket && type && action && amount && (
               <Button onClick={handleConfirmation} variant="default">
                 Confirm
               </Button>
@@ -455,16 +468,12 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
           <div className="text-sm text-muted-foreground">
             {action
               ? `Ready to ${
-                  action === 'close'
-                    ? 'close your position?'
-                    : action === 'claimLMReward'
-                      ? 'claim your rewards?'
-                      : 'claim your swap fee?'
-                }`
-              : ''}
+                  action === 'long' ? 'open a long position'
+                : 'open a short position'
+              }`: ''}
           </div>
         </CardFooter>
-      )} */}
+      )}
       {/* </CardContent> */}
     </Card>
   );

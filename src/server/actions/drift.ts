@@ -784,14 +784,15 @@ export const tradeDriftPerpAccountAction = async (
     };
   }
   try {
-   const signature = await agent.tradeUsingDriftPerpAccount(
+    console.log('tradeDriftPerpAccountAction', amount, symbol, action, type, price);
+    const signature = await agent.tradeUsingDriftPerpAccount(
         amount,
         symbol,
         action,
         type,
         price,
-   );
-
+    );
+    console.log('tradeDriftPerpAccountAction', signature);
     return {
       success: true,
       result: {

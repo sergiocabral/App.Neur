@@ -61,12 +61,14 @@ const performCreateDriftAccount = async ({
 }) => {
   try {
     const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
-
+    console.log("Started to create a drift account.....................");
     if (!agent) {
+      console.log("Failed to retrieve agent");
       return { success: false, error: 'Failed to retrieve agent' };
     }
-
+    console.log("Creating drift account with amount: ", amount, " and symbol: ", symbol);
     const result = await agent.createDriftUserAccount(amount, symbol);
+    console.log("Result: ", result);
     return { success: true, result: result };
   } catch (error) {
     return {
@@ -82,7 +84,7 @@ const performCreateDriftAccount = async ({
 const createDriftAccount = () => {
   const metadata = {
     description: 'Create a drift account for the user (no parameters required)',
-    parameters: z.object({
+    parameters: z.object({ 
       amount: z.number().default(0).describe('The amount of tokens to deposit'),
       symbol: z
         .string()
@@ -212,17 +214,11 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
         .describe('Message that the user sent')
       }),
     updateParameters: z.object({
-      amount: z.number().optional().describe('The amount to trade'),
-      symbol: z
-        .string()
-        .optional()
-        .describe('The market symbol to trade (e.g. SOL-PERP)'),
-      action: z
-        .enum(['long', 'short'])
-        .optional()
-        .describe('The trade direction'),
-      type: z.enum(['market', 'limit']).optional().describe('The order type'),
-      price: z.number().optional().describe('The price of the trade'),
+      amount: z.number().describe('The amount to trade'),
+      action: z.enum(['long', 'short']).describe('The action to take'),
+      type: z.enum(['market', 'limit']).describe('The type of trade'),
+      price: z.number().optional().describe('The price to trade at'),
+      symbol: z.string().describe('The symbol of the token to trade'),
     }),
   };
 
@@ -234,7 +230,7 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
     tool({
       ...metadata,
       execute: async ({ message }, { toolCallId }) => {
-        const updatedToolCall: {
+        let updatedToolCall: {
           toolCallId: string;
           status: 'streaming' | 'idle';
           step:  
@@ -245,39 +241,65 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
           | 'processing'
           | 'completed'
           | 'canceled';
-          amount?: number | null;
-          symbol?: string | null;
-          action?: 'long' | 'short' | null;
-          type?: 'market' | 'limit' | null;
-          price?: number | null;
-          markets?: PerpMarketType[];
+          amount?: number;
+          action?: 'long' | 'short';
+          type?: 'market' | 'limit';
+          price?: number;
+          symbol?: string;
         } = {
           toolCallId,
           status: 'streaming',
           step: 'market-selection',
         };
 
-        streamUpdate({
-          stream: dataStream,
-          update: {
-            type: 'stream-result-data',
-            status: 'idle',
-            toolCallId,
-            content: {
-              action: updatedToolCall.action || undefined,
-              amount: updatedToolCall.amount || undefined,
-              price: updatedToolCall.price || undefined,
-              step: updatedToolCall.step || 'market-selection',
-            },
-          },
+        const { object: originalToolCall } = await generateObject({
+          model: openai('gpt-4o-mini', { structuredOutputs: true }),
+          schema: z.object({
+            amount: z.number().nullable(),
+            action: z.enum(['long', 'short']).nullable(),
+            type: z.enum(['market', 'limit']).nullable(),
+            symbol: z.string(),
+            price: z.number().nullable(),
+          }),
+          prompt: `The user sent the following message: ${message}`,
         });
+
+        if (
+          originalToolCall &&
+          (originalToolCall.symbol && originalToolCall.amount && originalToolCall.action && originalToolCall.type)
+        ) {
+          updatedToolCall = {
+            ...updatedToolCall,
+            step: 'awaiting-confirmation',
+            price: originalToolCall.price ?? undefined,
+            amount: originalToolCall.amount,
+            action: originalToolCall.action,
+            type: originalToolCall.type,
+            symbol: originalToolCall.symbol,
+          };
+          streamUpdate({
+            stream: dataStream,
+            update: {
+              type: 'stream-result-data',
+              status: 'idle',
+              toolCallId,
+              content: {
+                ...updatedToolCall,
+              },
+            },
+          });
+        }
 
         return {
           success: true,
           noFollowUp: true,
           result: {
-            ...updatedToolCall,
-            step: 'awaiting-market-selection',
+            step: 'awaiting-confirmation',
+            amount: updatedToolCall.amount,
+            action: updatedToolCall.action,
+            type: updatedToolCall.type,
+            price: updatedToolCall.price,
+            symbol: updatedToolCall.symbol,
           },
         };
       },

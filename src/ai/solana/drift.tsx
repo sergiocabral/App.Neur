@@ -23,6 +23,7 @@ export const driftTools = {
         }
 
         const result = await agent.driftUserAccountInfo();
+        console.log(result);
 
         const accountInfo = {
           ...result,

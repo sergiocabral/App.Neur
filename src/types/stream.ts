@@ -152,11 +152,11 @@ export interface DriftPrepTrade {
     | 'processing'
     | 'completed'
     | 'canceled';
-  marketIndex?: number;
   amount?: number;
   action?: 'long' | 'short';
   type?: 'market' | 'limit';
   price?: number;
+  symbol?: string;
   signature?: string;
   error?: string;
 }
