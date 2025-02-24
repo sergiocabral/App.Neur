@@ -185,6 +185,10 @@ export async function POST(req: Request) {
 
         console.log('toolsRequired', toolsRequired);
 
+        const validTools = toolsRequired?.filter(
+          (tool) => !tool.includes('INVALID_TOOL'),
+        );
+
         logWithTiming(
           startTime,
           '[chat/route] getToolsFromOrchestrator complete',
@@ -192,31 +196,34 @@ export async function POST(req: Request) {
 
         const responses: ResponseMessage[] = [];
 
+        const wrappedTools = {
+          ...wrapTools(
+            {
+              dataStream,
+              abortData,
+              extraData: {
+                walletAddress: publicKey,
+                askForConfirmation: true,
+                userId,
+                conversationId,
+              },
+            },
+            validTools,
+          ),
+        };
+
         // Begin streaming text from the model
         const result = streamText({
           model: defaultModel,
           system: systemPrompt,
-          tools: {
-            ...wrapTools(
-              {
-                dataStream,
-                abortData,
-                extraData: {
-                  walletAddress: publicKey,
-                  askForConfirmation: true,
-                  userId,
-                  conversationId,
-                },
-              },
-              toolsRequired,
-            ),
-          },
+          tools: wrappedTools,
           abortSignal: abortData?.abortController?.signal,
           toolCallStreaming: true,
           experimental_telemetry: {
             isEnabled: true,
             functionId: 'stream-text',
           },
+          experimental_activeTools: Object.keys(wrappedTools),
           experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_repairToolCall: async ({
             toolCall,
@@ -245,7 +252,6 @@ export async function POST(req: Request) {
             });
             return { ...toolCall, args: JSON.stringify(repairedArgs) };
           },
-          experimental_activeTools: toolsRequired,
           maxSteps: 15,
           messages: relevant,
           onStepFinish: async (step) => {
@@ -357,9 +363,12 @@ async function saveResponses(
         m.content !== '' || (m.toolInvocations || []).length !== 0,
     );
 
+    const now = new Date();
     finalMessages.forEach((m, index) => {
       if (m.createdAt) {
         m.createdAt = new Date(m.createdAt.getTime() + index);
+      } else {
+        m.createdAt = new Date(now.getTime() + index);
       }
       if (m.role === 'assistant' && m.toolInvocations) {
         m.toolInvocations = m.toolInvocations.filter((t) => t.state !== 'call');

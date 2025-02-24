@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import {
   getJupiterTokenPrice,
+  searchJupiterTokenMint,
   searchJupiterTokens,
 } from '@/server/actions/jupiter';
 
@@ -15,8 +16,8 @@ export interface JupiterToken {
   logoURI: string | null;
 }
 
-export const searchForToken = async (query: string, onlyVerified = true) => {
-  const tokens = await searchJupiterTokens(query, onlyVerified);
+export const searchForToken = async (query: string) => {
+  const tokens = await searchJupiterTokens(query);
   const searchQuery = query.toLowerCase();
 
   try {
@@ -53,6 +54,25 @@ export const searchForToken = async (query: string, onlyVerified = true) => {
       result: null,
     };
   }
+};
+
+export const searchForTokenByMint = async (mint: string) => {
+  const token = await searchJupiterTokenMint(mint);
+  if (!token) {
+    return {
+      success: false,
+      result: null,
+    };
+  }
+  return {
+    success: true,
+    result: {
+      symbol: token.symbol,
+      mint: token.address,
+      name: token.name,
+      logoURI: token.logoURI,
+    },
+  };
 };
 
 export const searchTokenByName = () => {
@@ -113,7 +133,7 @@ export const searchTokenByMint = () => {
         result: JupiterToken | null;
         noFollowUp?: boolean;
       }> => {
-        const result = await searchForToken(tokenMint, false);
+        const result = await searchForTokenByMint(tokenMint);
         if (!result.success) {
           return {
             success: false,
@@ -206,7 +226,7 @@ export const getTokenPrice = () => {
           };
         }
         const tokenResult = token.mint
-          ? (await searchForToken(token.mint, false)).result
+          ? (await searchForTokenByMint(token.mint)).result
           : (await searchForToken(token.tokenName!)).result;
         if (!tokenResult) {
           return {

@@ -3,6 +3,7 @@ import { DataStreamWriter } from 'ai';
 import { ZodType, ZodTypeAny, ZodTypeDef } from 'zod';
 
 import { allBirdeyeTools } from './birdeye';
+import { allBundleTools } from './bundle';
 import { allChartTools } from './chart';
 import { createAction } from './create-action';
 import { definedFiTools } from './defined-fi';
@@ -14,11 +15,12 @@ import { allMagicEdenTools } from './magic-eden';
 import { meteoraLp } from './manage-meteora-lp';
 import { allMetaplexTools } from './metaplex';
 import { meteoraPosition } from './meteora';
-import { allSearchTokenTools, searchTokenByName } from './search-token';
+import { allSearchTokenTools } from './search-token';
 import { allSolanaTools } from './solana';
 import { swapTokens } from './swap';
-import { allTelegramTools, sendTelegramNotification } from './telegram';
+import { allTelegramTools } from './telegram';
 import { transferTokens } from './transfer';
+import { allTwitterTools } from './twitter';
 
 interface ToolMetadata {
   description: string;
@@ -64,13 +66,20 @@ export const allTools: Record<string, ToolConfig> = {
   ...allSearchTokenTools,
   ...allDriftTools,
   ...allMetaplexTools,
+  ...allBundleTools,
+  ...allTwitterTools,
 };
 
 export const wrapTools = (
   props: WrappedToolProps,
   toolsRequired?: string[],
 ) => {
-  const toolNames = toolsRequired ? toolsRequired : Object.keys(allTools);
+  const minTools =
+    !toolsRequired || toolsRequired.length > 0
+      ? toolsRequired
+      : ['searchTokenByName'];
+  const toolNames = minTools ? minTools : Object.keys(allTools);
+
   return toolNames.reduce(
     (acc, toolName) => {
       if (allTools[toolName]) {

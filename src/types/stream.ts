@@ -104,6 +104,7 @@ export interface CreateDriftDataResult {
 export interface Token {
   symbol: string;
   mint: string;
+  name?: string;
   balance?: number;
   logoURI?: string | null;
 }
@@ -121,6 +122,7 @@ export interface MeteoraPositionResult {
   token?: Token | null;
   poolId?: string;
   amount?: number;
+  shouldSwapHalf?: boolean;
   signature?: string;
   error?: string;
 }
@@ -135,7 +137,7 @@ export interface MeteoraPositionUpdateResult {
     | 'completed'
     | 'canceled';
   positions?: PositionWithPoolName[];
-  selectedPositionAddress?: string;
+  selectedPositionAddress?: string | null;
   action?: 'close' | 'claimLMReward' | 'claimSwapFee';
   signature?: string;
   error?: string;

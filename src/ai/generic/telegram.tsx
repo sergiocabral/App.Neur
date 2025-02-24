@@ -146,7 +146,7 @@ export const telegramTools = {
     isCollapsible: true,
     isExpandedByDefault: true,
     description:
-      'Sends a Telegram message. Run verifyTelegramSetup (without any parameters)before this tool to ensure proper setup.',
+      'Sends a Telegram message. Run verifyTelegramSetup (without any parameters) before this tool to ensure proper setup.',
     parameters: z.object({
       username: z.string().optional(),
       message: z.string(),

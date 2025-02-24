@@ -59,7 +59,7 @@ export const sendTelegramNotification = () => {
   };
 };
 
-export const veryfyTelegramSetup = () => {
+export const verifyTelegramSetup = () => {
   const metadata = {
     description: telegramTools.verifyTelegramSetup.description,
     parameters: telegramTools.verifyTelegramSetup.parameters,
@@ -104,5 +104,5 @@ export const veryfyTelegramSetup = () => {
 
 export const allTelegramTools = {
   sendTelegramNotification: sendTelegramNotification(),
-  verifyTelegramSetup: veryfyTelegramSetup(),
+  verifyTelegramSetup: verifyTelegramSetup(),
 };
