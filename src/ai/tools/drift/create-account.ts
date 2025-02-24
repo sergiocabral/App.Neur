@@ -87,7 +87,7 @@ export const createDriftAccount = (): ToolConfig => {
               type: 'stream-result-data',
               toolCallId,
               content: {
-                ...result,
+                ...result.result,
                 step: result.success ? 'completed' : 'failed',
               },
             },
