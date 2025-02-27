@@ -59,9 +59,18 @@ export default function DriftAccountInfo({
       </Card>
     )
   }
-  
-  const {name, accountAddress, authority, overallBalance, settledPerpPnl, lastActiveSlot, perpPositions, spotPositions} = result;
 
+  const {
+    name = '',
+    accountAddress = '',
+    authority = '',
+    overallBalance = 0,
+    settledPerpPnl = '',
+    lastActiveSlot = 0,
+    spotPositions = [],
+    perpPositions = [],
+  } = result;
+  
   return (
     <Card className="w-full max-w-xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <CardHeader className="pb-2">
@@ -133,29 +142,29 @@ export default function DriftAccountInfo({
               {spotPositions.map((position, index) => (
                 <div key={index} className="grid gap-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-medium">{position.symbol}</span>
+                    <span className="font-medium">{position?.symbol}</span>
                     <Badge variant="secondary" className="text-xs">
-                      {position.type}
+                        {position?.type}
                     </Badge>
                   </div>
                   <div className="grid gap-1 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Available</span>
                       <span className="font-mono">
-                        {position.availableBalance.toFixed(8)}
+                        {position?.availableBalance.toFixed(8)}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Open Orders</span>
-                      <span className="font-mono">{position.openOrders}</span>
+                      <span className="font-mono">{position?.openOrders}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Open Bids</span>
-                      <span className="font-mono">{position.openBids}</span>
+                      <span className="font-mono">{position?.openBids}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Open Asks</span>
-                      <span className="font-mono">{position.openAsks}</span>
+                      <span className="font-mono">{position?.openAsks}</span>
                     </div>
                   </div>
                 </div>
@@ -175,7 +184,7 @@ export default function DriftAccountInfo({
             <Separator />
             <div className="space-y-2">
               <span className="text-sm font-medium">Perp Positions</span>
-              {/* Add perp positions */}
+              {/* need to add perp positions here  */}
             </div>
           </>
         )}

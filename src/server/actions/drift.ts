@@ -19,6 +19,7 @@ export async function createDriftAccount({
       const result = await agent.createDriftUserAccount(amount, symbol);
       return { success: true, result, step: 'completed' as const };
     } catch (error) {
+      console.log('Error while creating drift account', error);
       return {
         success: false,
         error:
@@ -63,4 +64,39 @@ export async function getDriftAccountInfo() {
   }
 }
 
+export async function getDriftMarkets() {
+  try {
+    const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
+
+    if (!agent) {
+      return {
+        success: false,
+        error: 'Failed to retrieve agent',
+        step: 'failed' as const,
+      };
+    }
+
+    const markets = agent.getAvailableDriftMarkets('spot') as any[];
+
+    const availableSymbols = [
+      ...new Map(
+        markets.map((m) => [
+          m.mint.toBase58(),
+          { symbol: m.symbol, mint: m.mint.toBase58() },
+        ]), 
+      ).values(),
+    ];
+
+
+    return { success: true, result: availableSymbols };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to get drift markets',
+    };
+  }
+}
 

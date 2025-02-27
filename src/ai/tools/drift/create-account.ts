@@ -1,16 +1,24 @@
-import { tool } from 'ai';
+import { generateObject, tool } from 'ai';
 import { z } from 'zod';
 
 import { streamUpdate } from '@/lib/utils';
 import { retrieveAgentKit } from '@/server/actions/ai';
-import { createDriftAccount as createDriftAccountAction } from '@/server/actions/drift';
+import { createDriftAccount as createDriftAccountAction , getDriftMarkets } from '@/server/actions/drift';
 
 import { ToolConfig, WrappedToolProps } from '..';
+import { openai } from '@/ai/providers';
 
 export const createDriftAccount = (): ToolConfig => {
   const metadata = {
-    description: 'Create a drift account for the user',
+    description: 'Call this tool when the user wants to create a drift account',
     parameters: z.object({
+      message: z
+        .string()
+        .optional()
+        .or(z.literal(''))
+        .describe('Message that the user sent'),
+    }),
+    updateParameters: z.object({
       amount: z.number().default(0).describe('The amount of tokens to deposit'),
       symbol: z
         .string()
@@ -22,48 +30,58 @@ export const createDriftAccount = (): ToolConfig => {
   const buildTool = ({
     dataStream = undefined,
     abortData,
-    extraData: { askForConfirmation },
+    extraData: { agentKit },
   }: WrappedToolProps) =>
     tool({
       ...metadata,
       execute: async (
-        originalToolCall: z.infer<typeof metadata.parameters>,
+        { message }: z.infer<typeof metadata.parameters>,
         { toolCallId },
       ) => {
+        const updatedToolCall: {
+          toolCallId: string;
+          status: 'streaming' | 'idle';
+          step: string;
+          availableSymbols: { symbol: string; mint: string }[];
+        } = {
+          toolCallId,
+          status: 'streaming',
+          step: 'updating',  
+          availableSymbols: [],
+        }; 
 
-        streamUpdate({
+         const {result: availableSymbols , success } = await getDriftMarkets();
+
+         if(!success){
+          throw new Error('Failed to get drift markets');
+         }
+
+         streamUpdate({
           stream: dataStream,
           update: {
             type: 'stream-result-data',
             status: 'streaming',
             toolCallId,
             content: {
-              ...originalToolCall,
+              ...updatedToolCall,
               step: 'updating',
+              availableSymbols,
             },
           },
+         });
+        
+        const { object: originalToolCall } = await generateObject({
+          model: openai('gpt-4o-mini', { structuredOutputs: true }),
+          schema:z.object({
+            amount: z.number().nullable(),
+            symbol: z.string().nullable(),
+          }),
+          prompt: `The user sent the following message: ${message}`,
         });
 
         if (
-          askForConfirmation ||
-          !originalToolCall.symbol ||
-          !originalToolCall.amount
-        ) {
-          streamUpdate({
-            stream: dataStream,
-            update: {
-              type: 'stream-result-data',
-              status: 'idle',
-              toolCallId,
-              content: {
-                step: 'awaiting-confirmation',
-              },
-            },
-          });
-          if (abortData?.abortController) {
-            abortData.shouldAbort = true;
-          }
-        } else {
+          originalToolCall && originalToolCall?.symbol && originalToolCall?.amount
+        )  {
 
           streamUpdate({
               stream: dataStream,
@@ -86,6 +104,7 @@ export const createDriftAccount = (): ToolConfig => {
             update: {
               type: 'stream-result-data',
               toolCallId,
+              status: 'idle',
               content: {
                 ...result.result,
                 step: result.success ? 'completed' : 'failed',
@@ -103,25 +122,11 @@ export const createDriftAccount = (): ToolConfig => {
           };
         }
 
-         // get available markets to show in UI
-         const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
-         const markets = agent
-           ? (agent.getAvailableDriftMarkets('spot') as any[])
-           : [];
- 
-         const availableSymbols = [
-           ...new Map(
-             markets.map((m) => [
-               m.mint.toBase58(),
-               { symbol: m.symbol, mint: m.mint.toBase58() },
-             ]),
-           ).values(),
-         ];
-
         return {
           success: true,
+          noFollowUp: true,
           result: {
-            ...originalToolCall,
+            ...updatedToolCall,
             availableSymbols,
             step: 'awaiting-confirmation',
           },
@@ -132,7 +137,7 @@ export const createDriftAccount = (): ToolConfig => {
   return {
     metadata,
     buildTool,
-    confirm: createDriftAccountAction
+    confirm: createDriftAccountAction,
   };
 };
 
