@@ -161,6 +161,24 @@ export interface DriftPrepTrade {
   error?: string;
 }
 
+
+export interface DriftSpotTrade {
+  step?:
+    | 'awaiting-confirmation'
+    | 'confirmed'
+    | 'processing'
+    | 'completed'
+    | 'canceled'
+    | 'failed';
+  fromSymbol?: string;
+  toSymbol?: string;
+  fromAmount?: number;
+  toAmount?: number;
+  slippage?: number;
+  signature?: string;
+  error?: string;
+}
+
 export interface ToolDataStream {
   type: 'stream-result-data';
   status?: 'streaming' | 'idle' | 'completed' | undefined;
@@ -173,7 +191,8 @@ export interface ToolDataStream {
     | CreateDriftDataResult
     | MeteoraPositionResult
     | MeteoraPositionUpdateResult
-    | DriftPrepTrade;
+    | DriftPrepTrade
+    | DriftSpotTrade;
 }
 
 export type DataStreamDelta = ToolDataStream;

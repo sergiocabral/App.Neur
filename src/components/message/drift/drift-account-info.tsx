@@ -40,7 +40,7 @@ export default function DriftAccountInfo({
 }: AccountInfoProps) {
   const [showSpotPositions, setShowSpotPositions] = useState(true);
   const [showAccountDetails, setShowAccountDetails] = useState(false);
-
+  console.log(perpPositions);
   return (
     <Card className="w-full max-w-xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <CardHeader className="pb-2">

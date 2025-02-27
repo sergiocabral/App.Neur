@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { streamUpdate } from '@/lib/utils';
 import { retrieveAgentKit } from '@/server/actions/ai';
-import { MainnetPerpMarketsList, PerpMarketType, tradeDriftPerpAccountAction } from '@/server/actions/drift';
+import { MainnetPerpMarketsList, PerpMarketType, SpotTokenSwapDriftAction, tradeDriftPerpAccountAction } from '@/server/actions/drift';
 
 import { ToolConfig, WrappedToolProps } from '.';
 import { openai } from '../providers';
@@ -309,6 +309,165 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
     metadata,
     buildTool,
     confirm: tradeDriftPerpAccountAction,
+  };
+};
+
+export const SpotTokenSwapDrift = (): ToolConfig => {
+  const metadata = {
+    description:
+      'Swap spot tokens on Drift protocol.',
+    parameters: z.object({
+      message: z
+        .string()
+        .optional()
+        .or(z.literal(''))
+        .describe('Message that the user sent'),
+    }),
+    updateParameters: z.object({
+      fromSymbol: z.string().describe('The symbol of the token to swap from'),
+      toSymbol: z.string().describe('The symbol of the token to swap to'),
+      fromAmount: z.number().describe('The amount to swap from'),
+      toAmount: z.number().describe('The amount to swap to'),
+      slippage: z.number().optional().describe('The slippage tolerance'),
+    }),
+  };
+
+  const buildTool = ({
+    dataStream = undefined,
+    abortData,
+    extraData: { askForConfirmation, agentKit },
+  }: WrappedToolProps) =>
+    tool({
+      ...metadata,
+      execute: async ({ message }, { toolCallId }) => {
+        let updatedToolCall: {
+          toolCallId: string;
+          status: 'streaming' | 'idle';
+          step:  
+          | 'awaiting-confirmation'
+          | 'confirmed'
+          | 'processing'
+          | 'completed'
+          | 'canceled';
+          fromSymbol?: string;
+          toSymbol?: string;
+          fromAmount?: number;
+          toAmount?: number;
+          slippage?: number;
+        } = {
+          toolCallId,
+          status: 'streaming',
+          step: 'awaiting-confirmation',
+        };
+        streamUpdate({
+          stream: dataStream,
+          update: {
+            type: 'stream-result-data',
+            status: 'streaming',
+            toolCallId,
+            content: {
+              step: 'awaiting-confirmation',
+            },
+          },
+        });
+        console.log("Started to swap spot tokens on Drift protocol.....................");
+        const { object: originalToolCall } = await generateObject({
+          model: openai('gpt-4o-mini', { structuredOutputs: true }),
+          schema: z.object({
+            fromSymbol: z.string().nullable(),
+            toSymbol: z.string().nullable(),
+            fromAmount: z.number().nullable(),
+            toAmount: z.number().nullable(),
+            slippage: z.number().nullable(),
+          }),
+          prompt: `The user sent the following message: ${message}`,
+        });
+
+        if (originalToolCall)
+        {
+          updatedToolCall = {
+            ...updatedToolCall,
+            step: 'awaiting-confirmation',
+            fromSymbol: originalToolCall.fromSymbol ?? undefined,
+            toSymbol: originalToolCall.toSymbol ?? undefined,
+            fromAmount: originalToolCall.fromAmount ?? undefined,
+            toAmount: originalToolCall.toAmount ?? undefined,
+            slippage: originalToolCall.slippage ?? undefined,
+          };
+          streamUpdate({
+            stream: dataStream,
+            update: {
+              type: 'stream-result-data',
+              status: 'idle',
+              toolCallId,
+              content: {
+                ...updatedToolCall,
+              },
+            },
+          });
+        }
+
+
+        // if(updatedToolCall.fromSymbol && 
+        //     updatedToolCall.toSymbol && 
+        //     updatedToolCall.fromAmount && 
+        //     updatedToolCall.toAmount && 
+        //     updatedToolCall.slippage &&
+        //     updatedToolCall.fromSymbol !== updatedToolCall.toSymbol &&
+        //     updatedToolCall.fromAmount > 0 &&
+        //     updatedToolCall.toAmount > 0
+        // ){
+        //   const result = await SpotTokenSwapDriftAction(
+        //     {
+        //       fromSymbol: updatedToolCall.fromSymbol,
+        //       toSymbol: updatedToolCall.toSymbol,
+        //       fromAmount: updatedToolCall.fromAmount,
+        //       toAmount: updatedToolCall.toAmount,
+        //       slippage: updatedToolCall.slippage,
+        //     },
+        //     { agentKit },
+        //   );
+        //   streamUpdate({
+        //     stream: dataStream,
+        //     update: {
+        //       type: 'stream-result-data',
+        //       toolCallId,
+        //       content: {
+        //         step: result.success ? 'completed' : 'failed',
+        //         signature: result.result?.signature,
+        //       },
+        //     },
+        //   });
+        //   return {
+        //     success: true,
+        //     noFollowUp: true,
+        //     result: {
+        //       ...updatedToolCall,
+        //       step: result.success ? 'completed' : 'failed',
+        //       signature: result.result?.signature,
+        //       error: result.error,
+        //     },
+        //   };    
+        // }
+
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            step: 'awaiting-confirmation',
+            fromSymbol: updatedToolCall.fromSymbol,
+            toSymbol: updatedToolCall.toSymbol,
+            fromAmount: updatedToolCall.fromAmount,
+            slippage: updatedToolCall.slippage,
+          },
+        };
+      },
+    });
+
+  return {
+    metadata,
+    buildTool,
+    confirm: SpotTokenSwapDriftAction,
   };
 };
 

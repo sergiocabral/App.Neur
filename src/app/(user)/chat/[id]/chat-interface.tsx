@@ -66,6 +66,7 @@ import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { ConversationInput } from '../../home/conversation-input';
 import { DriftPrepTrade } from '@/components/message/drift/drfitPrepTrade';
+import { SpotSwapDrift } from '@/components/message/drift/SpotTokenSwapDrift';
 
 const TOOL_COMPONENTS: Record<
   string,
@@ -110,6 +111,10 @@ const TOOL_COMPONENTS: Record<
     component: DriftPrepTrade,
     displayName: '🌊 Prep trade',
   },
+  SpotTokenSwapDrift:{
+    component: SpotSwapDrift,
+    displayName: '🔄 Swap Tokens',
+  }
 };
 
 // Types
