@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { MainnetSpotMarketsList, SpotMarketType } from '@/server/actions/drift';
+import { SpotMarketType } from '@/server/actions/drift';
 import type { DriftSpotTrade } from '@/types/stream';
 
 import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
@@ -51,17 +51,17 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
   const [fromAmount, setFromAmount] = useState<number | undefined>(data.result?.fromAmount);
   const [toAmount, setToAmount] = useState<number | undefined>(data.result?.toAmount);
   const [slippage, setSlippage] = useState<number>(data.result?.slippage || 0.5);
-  const [sportMarketList, setSportMarketList] = useState<SpotMarketType[]>(MainnetSpotMarketsList);
+  const [sportMarketList, setSportMarketList] = useState<SpotMarketType[]>(data.result?.spotMarkets || []);
 
   const [step, setStep] = useState<
-    | 'inputs'
+    | 'get-markets'
     | 'awaiting-confirmation'
     | 'confirmed'
     | 'processing'
     | 'completed'
     | 'canceled'
     | 'failed'
-  >(data.result?.step || 'inputs');
+  >(data.result?.step || 'get-markets');
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -100,6 +100,8 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
 
   useEffect(() => {
     console.log({ fromSymbol, toSymbol, fromAmount, toAmount, slippage, step: data });
+    if(data.result?.spotMarkets)
+      setSportMarketList(data.result?.spotMarkets);
   }, [fromSymbol, toSymbol, fromAmount, toAmount, slippage, data]);
 
   const handleCancel = async () => {

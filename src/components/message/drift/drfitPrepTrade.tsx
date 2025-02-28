@@ -28,25 +28,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
-import { truncate } from '@/lib/utils/format';
-import { MainnetPerpMarketsList, PerpMarketType } from '@/server/actions/drift';
-import {
-  PositionWithPoolName,
-  TokenData,
-  getAllLbPairPositionForOwner,
-  getMeteoraPositions,
-  getTokenData,
-} from '@/server/actions/meteora';
+import { PerpMarketType } from '@/server/actions/drift';
 import type { DriftPrepTrade } from '@/types/stream';
 
 import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
@@ -80,9 +65,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
 
   const [mainnetPerpMarketsLists, setMainnetPerpMarketsLists] = useState<
     PerpMarketType[] | null
-  >(MainnetPerpMarketsList);
-
-  console.log(mainnetPerpMarketsLists);
+  >(data.result?.prepMarkets || null);
 
   const [isLoading, setIsLoading] = useState(false);
   const [type, setType] = useState<'market' | 'limit'>();
@@ -96,7 +79,10 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
   );
 
   useEffect(() => {
+    if(data.result?.prepMarkets) setMainnetPerpMarketsLists(data.result?.prepMarkets);
+
     if (data.result?.step) setStep(data.result?.step);
+
     setOverlay(
       data.result?.step === 'confirmed' ||
       data.result?.step === 'processing' ||
@@ -474,7 +460,6 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
           </div>
         </CardFooter>
       )}
-      {/* </CardContent> */}
     </Card>
   );
 }

@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { streamUpdate } from '@/lib/utils';
 import { retrieveAgentKit } from '@/server/actions/ai';
-import { MainnetPerpMarketsList, PerpMarketType, SpotTokenSwapDriftAction, tradeDriftPerpAccountAction } from '@/server/actions/drift';
+import { getMainnetDriftMarkets, PerpMarketType, SpotMarketType, SpotTokenSwapDriftAction, tradeDriftPerpAccountAction } from '@/server/actions/drift';
 
 import { ToolConfig, WrappedToolProps } from '.';
 import { openai } from '../providers';
@@ -61,14 +61,11 @@ const performCreateDriftAccount = async ({
 }) => {
   try {
     const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
-    console.log("Started to create a drift account.....................");
     if (!agent) {
       console.log("Failed to retrieve agent");
       return { success: false, error: 'Failed to retrieve agent' };
     }
-    console.log("Creating drift account with amount: ", amount, " and symbol: ", symbol);
     const result = await agent.createDriftUserAccount(amount, symbol);
-    console.log("Result: ", result);
     return { success: true, result: result };
   } catch (error) {
     return {
@@ -241,6 +238,7 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
           | 'processing'
           | 'completed'
           | 'canceled';
+          prepMarkets?: PerpMarketType[];
           amount?: number;
           action?: 'long' | 'short';
           type?: 'market' | 'limit';
@@ -251,6 +249,23 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
           status: 'streaming',
           step: 'market-selection',
         };
+
+        const getMarkets = await getMainnetDriftMarkets({agentKit});
+        if(getMarkets.success) {
+          updatedToolCall.prepMarkets = getMarkets.result?.PrepMarkets ?? [];
+          streamUpdate({
+            stream: dataStream,
+            update: {
+              type: 'stream-result-data',
+              status: 'streaming',
+              toolCallId,
+              content: {
+                step: 'market-selection',
+                prepMarkets: updatedToolCall.prepMarkets,
+              },
+            },
+          });
+        }
 
         const { object: originalToolCall } = await generateObject({
           model: openai('gpt-4o-mini', { structuredOutputs: true }),
@@ -354,11 +369,35 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
           fromAmount?: number;
           toAmount?: number;
           slippage?: number;
+          spotMarkets?: SpotMarketType[];
         } = {
           toolCallId,
           status: 'streaming',
           step: 'awaiting-confirmation',
         };
+
+        streamUpdate({
+          stream: dataStream,
+          update: {
+            type: 'stream-result-data',
+            status: 'streaming',
+            toolCallId,
+            content: {
+              step: 'get-markets',
+            },
+          },
+        });
+
+        const getMarkets = await getMainnetDriftMarkets({agentKit});
+
+        if (getMarkets.success) {
+          updatedToolCall = {
+            ...updatedToolCall,
+            step: 'awaiting-confirmation',
+            spotMarkets: getMarkets.result?.SpotMarkets ?? [],
+          };
+        }
+
         streamUpdate({
           stream: dataStream,
           update: {
@@ -367,6 +406,7 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
             toolCallId,
             content: {
               step: 'awaiting-confirmation',
+              spotMarkets: updatedToolCall.spotMarkets,
             },
           },
         });
@@ -406,49 +446,6 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
             },
           });
         }
-
-
-        // if(updatedToolCall.fromSymbol && 
-        //     updatedToolCall.toSymbol && 
-        //     updatedToolCall.fromAmount && 
-        //     updatedToolCall.toAmount && 
-        //     updatedToolCall.slippage &&
-        //     updatedToolCall.fromSymbol !== updatedToolCall.toSymbol &&
-        //     updatedToolCall.fromAmount > 0 &&
-        //     updatedToolCall.toAmount > 0
-        // ){
-        //   const result = await SpotTokenSwapDriftAction(
-        //     {
-        //       fromSymbol: updatedToolCall.fromSymbol,
-        //       toSymbol: updatedToolCall.toSymbol,
-        //       fromAmount: updatedToolCall.fromAmount,
-        //       toAmount: updatedToolCall.toAmount,
-        //       slippage: updatedToolCall.slippage,
-        //     },
-        //     { agentKit },
-        //   );
-        //   streamUpdate({
-        //     stream: dataStream,
-        //     update: {
-        //       type: 'stream-result-data',
-        //       toolCallId,
-        //       content: {
-        //         step: result.success ? 'completed' : 'failed',
-        //         signature: result.result?.signature,
-        //       },
-        //     },
-        //   });
-        //   return {
-        //     success: true,
-        //     noFollowUp: true,
-        //     result: {
-        //       ...updatedToolCall,
-        //       step: result.success ? 'completed' : 'failed',
-        //       signature: result.result?.signature,
-        //       error: result.error,
-        //     },
-        //   };    
-        // }
 
         return {
           success: true,

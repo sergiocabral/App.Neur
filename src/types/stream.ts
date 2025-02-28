@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { MeteoraPool, PositionWithPoolName } from '@/server/actions/meteora';
+import { PerpMarketType, SpotMarketType } from '@/server/actions/drift';
 
 export interface TokenInfo {
   symbol?: string;
@@ -152,6 +153,7 @@ export interface DriftPrepTrade {
     | 'processing'
     | 'completed'
     | 'canceled';
+  prepMarkets?: PerpMarketType[];
   amount?: number;
   action?: 'long' | 'short';
   type?: 'market' | 'limit';
@@ -164,12 +166,14 @@ export interface DriftPrepTrade {
 
 export interface DriftSpotTrade {
   step?:
+    | 'get-markets'
     | 'awaiting-confirmation'
     | 'confirmed'
     | 'processing'
     | 'completed'
     | 'canceled'
     | 'failed';
+  spotMarkets?: SpotMarketType[];
   fromSymbol?: string;
   toSymbol?: string;
   fromAmount?: number;
