@@ -1,12 +1,14 @@
 import { generateObject, tool } from 'ai';
 import { z } from 'zod';
 
+import { openai } from '@/ai/providers';
 import { streamUpdate } from '@/lib/utils';
-import { retrieveAgentKit } from '@/server/actions/ai';
-import { createDriftAccount as createDriftAccountAction , getDriftMarkets } from '@/server/actions/drift';
+import {
+  createDriftAccount as createDriftAccountAction,
+  getMainnetDriftMarkets,
+} from '@/server/actions/drift';
 
 import { ToolConfig, WrappedToolProps } from '..';
-import { openai } from '@/ai/providers';
 
 export const createDriftAccount = (): ToolConfig => {
   const metadata = {
@@ -23,8 +25,8 @@ export const createDriftAccount = (): ToolConfig => {
       symbol: z
         .string()
         .default('')
-        .describe('The symbol of the token to deposit')
-    })
+        .describe('The symbol of the token to deposit'),
+    }),
   };
 
   const buildTool = ({
@@ -46,17 +48,28 @@ export const createDriftAccount = (): ToolConfig => {
         } = {
           toolCallId,
           status: 'streaming',
-          step: 'updating',  
+          step: 'updating',
           availableSymbols: [],
-        }; 
+        };
 
-         const {result: availableSymbols , success } = await getDriftMarkets();
+        const { result, success } = await getMainnetDriftMarkets({ agentKit });
 
-         if(!success){
+        if (!success) {
           throw new Error('Failed to get drift markets');
-         }
+        }
 
-         streamUpdate({
+        let availableMarkets = result?.SpotMarkets || [];
+
+        if (availableMarkets?.length === 0) {
+          throw new Error('No drift markets available');
+        }
+
+        let availableSymbols = availableMarkets.map((market) => ({
+          symbol: market.symbol,
+          mint: market.mint.toBase58(),
+        }));
+
+        streamUpdate({
           stream: dataStream,
           update: {
             type: 'stream-result-data',
@@ -68,11 +81,11 @@ export const createDriftAccount = (): ToolConfig => {
               availableSymbols,
             },
           },
-         });
-        
+        });
+
         const { object: originalToolCall } = await generateObject({
           model: openai('gpt-4o-mini', { structuredOutputs: true }),
-          schema:z.object({
+          schema: z.object({
             amount: z.number().nullable(),
             symbol: z.string().nullable(),
           }),
@@ -80,12 +93,13 @@ export const createDriftAccount = (): ToolConfig => {
         });
 
         if (
-          originalToolCall && originalToolCall?.symbol && originalToolCall?.amount
-        )  {
-
+          originalToolCall &&
+          originalToolCall?.symbol &&
+          originalToolCall?.amount
+        ) {
           streamUpdate({
-              stream: dataStream,
-              update: {
+            stream: dataStream,
+            update: {
               type: 'stream-result-data',
               toolCallId,
               content: {
@@ -140,4 +154,3 @@ export const createDriftAccount = (): ToolConfig => {
     confirm: createDriftAccountAction,
   };
 };
-
