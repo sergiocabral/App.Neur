@@ -3,7 +3,13 @@ import { z } from 'zod';
 
 import { streamUpdate } from '@/lib/utils';
 import { retrieveAgentKit } from '@/server/actions/ai';
-import { getMainnetDriftMarkets, PerpMarketType, SpotMarketType, SpotTokenSwapDriftAction, tradeDriftPerpAccountAction } from '@/server/actions/drift';
+import {
+  PerpMarketType,
+  SpotMarketType,
+  SpotTokenSwapDriftAction,
+  getMainnetDriftMarkets,
+  tradeDriftPerpAccountAction,
+} from '@/server/actions/drift';
 
 import { ToolConfig, WrappedToolProps } from '.';
 import { openai } from '../providers';
@@ -62,7 +68,7 @@ const performCreateDriftAccount = async ({
   try {
     const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
     if (!agent) {
-      console.log("Failed to retrieve agent");
+      console.log('Failed to retrieve agent');
       return { success: false, error: 'Failed to retrieve agent' };
     }
     const result = await agent.createDriftUserAccount(amount, symbol);
@@ -81,7 +87,7 @@ const performCreateDriftAccount = async ({
 const createDriftAccount = () => {
   const metadata = {
     description: 'Create a drift account for the user (no parameters required)',
-    parameters: z.object({ 
+    parameters: z.object({
       amount: z.number().default(0).describe('The amount of tokens to deposit'),
       symbol: z
         .string()
@@ -201,15 +207,14 @@ const createDriftAccount = () => {
 
 export const tradeDriftPerpAccount = (): ToolConfig => {
   const metadata = {
-    description:
-      'Tool to Trade a perpetual account on Drift protocol.',
+    description: 'Tool to Trade a perpetual account on Drift protocol.',
     parameters: z.object({
       message: z
         .string()
         .optional()
         .or(z.literal(''))
-        .describe('Message that the user sent')
-      }),
+        .describe('Message that the user sent'),
+    }),
     updateParameters: z.object({
       amount: z.number().describe('The amount to trade'),
       action: z.enum(['long', 'short']).describe('The action to take'),
@@ -230,14 +235,14 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
         let updatedToolCall: {
           toolCallId: string;
           status: 'streaming' | 'idle';
-          step:  
-          | 'market-selection'
-          | 'inputs'
-          | 'awaiting-confirmation'
-          | 'confirmed'
-          | 'processing'
-          | 'completed'
-          | 'canceled';
+          step:
+            | 'market-selection'
+            | 'inputs'
+            | 'awaiting-confirmation'
+            | 'confirmed'
+            | 'processing'
+            | 'completed'
+            | 'canceled';
           prepMarkets?: PerpMarketType[];
           amount?: number;
           action?: 'long' | 'short';
@@ -250,8 +255,8 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
           step: 'market-selection',
         };
 
-        const getMarkets = await getMainnetDriftMarkets({agentKit});
-        if(getMarkets.success) {
+        const getMarkets = await getMainnetDriftMarkets({ agentKit });
+        if (getMarkets.success) {
           updatedToolCall.prepMarkets = getMarkets.result?.PrepMarkets ?? [];
           streamUpdate({
             stream: dataStream,
@@ -281,7 +286,10 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
 
         if (
           originalToolCall &&
-          (originalToolCall.symbol && originalToolCall.amount && originalToolCall.action && originalToolCall.type)
+          originalToolCall.symbol &&
+          originalToolCall.amount &&
+          originalToolCall.action &&
+          originalToolCall.type
         ) {
           updatedToolCall = {
             ...updatedToolCall,
@@ -329,8 +337,7 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
 
 export const SpotTokenSwapDrift = (): ToolConfig => {
   const metadata = {
-    description:
-      'Swap spot tokens on Drift protocol.',
+    description: 'Swap spot tokens on Drift protocol.',
     parameters: z.object({
       message: z
         .string()
@@ -358,12 +365,12 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
         let updatedToolCall: {
           toolCallId: string;
           status: 'streaming' | 'idle';
-          step:  
-          | 'awaiting-confirmation'
-          | 'confirmed'
-          | 'processing'
-          | 'completed'
-          | 'canceled';
+          step:
+            | 'awaiting-confirmation'
+            | 'confirmed'
+            | 'processing'
+            | 'completed'
+            | 'canceled';
           fromSymbol?: string;
           toSymbol?: string;
           fromAmount?: number;
@@ -388,7 +395,7 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
           },
         });
 
-        const getMarkets = await getMainnetDriftMarkets({agentKit});
+        const getMarkets = await getMainnetDriftMarkets({ agentKit });
 
         if (getMarkets.success) {
           updatedToolCall = {
@@ -410,7 +417,9 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
             },
           },
         });
-        console.log("Started to swap spot tokens on Drift protocol.....................");
+        console.log(
+          'Started to swap spot tokens on Drift protocol.....................',
+        );
         const { object: originalToolCall } = await generateObject({
           model: openai('gpt-4o-mini', { structuredOutputs: true }),
           schema: z.object({
@@ -423,8 +432,7 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
           prompt: `The user sent the following message: ${message}`,
         });
 
-        if (originalToolCall)
-        {
+        if (originalToolCall) {
           updatedToolCall = {
             ...updatedToolCall,
             step: 'awaiting-confirmation',
@@ -470,6 +478,4 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
 
 export const allDriftTools = {
   getDriftAPY: getDriftAPY(),
-  driftAccountInfo: driftAccountInfo(),
-  createDriftAccount: createDriftAccount(),
 };

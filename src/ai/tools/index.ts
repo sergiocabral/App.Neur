@@ -64,6 +64,7 @@ export const allTools: Record<string, ToolConfig> = {
   SpotTokenSwapDrift: SpotTokenSwapDrift(),
   createDriftAccount: createDriftAccount(),
   getDriftAccountInfo: getDriftAccountInfo(),
+  ...allDriftTools,
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,
