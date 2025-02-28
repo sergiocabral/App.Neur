@@ -61,6 +61,7 @@
     "framer-motion": "^11.18.2",
     "helius-sdk": "^1.4.2",
     "keyv": "4.5.4",
+    "lightweight-charts": "^5.0.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.468.0",
     "mem0ai": "^1.0.32",

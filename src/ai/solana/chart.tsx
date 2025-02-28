@@ -1,21 +1,25 @@
+import React from 'react';
+
 import { z } from 'zod';
 
 import PriceChart from '@/components/price-chart';
 import { getDexPriceHistory, getPriceHistory } from '@/server/actions/chart';
-import { TIMEFRAME } from '@/types/chart';
+import { Candle } from '@/types/chart-elements';
+import { INTERVAL } from '@/types/interval';
+import { TIME_RANGE } from '@/types/time-range';
 
 const chartToolParameters = z.object({
   contractAddress: z.string().describe('The contract address of the token'),
-  timeFrame: z
-    .enum([TIMEFRAME.DAYS, TIMEFRAME.HOURS, TIMEFRAME.MINUTES])
-    .default(TIMEFRAME.DAYS)
-    .describe('The timeframe for the price history'),
-  timeDelta: z
-    .number()
-    .min(1)
-    .max(30)
-    .default(7)
-    .describe('Number of timeframe units to fetch (default 7)'),
+  interval: z
+    .nativeEnum(INTERVAL)
+    .default(INTERVAL.DAYS)
+    .describe('The time interval/frequency units for the price history'),
+  timeRange: z
+    .nativeEnum(TIME_RANGE)
+    .default(TIME_RANGE.MONTH)
+    .describe(
+      'Time range to fetch for price history (default 30, one month, 1M)',
+    ),
   tokenSymbol: z.string().optional().describe('Optional token symbol'),
   aggregator: z.string().optional().describe('OHLCV aggregator for DEX'),
   beforeTimestamp: z
@@ -27,9 +31,11 @@ const chartToolParameters = z.object({
 function renderChart(result: unknown) {
   const typedResult = result as {
     success: boolean;
-    data?: { time: number; value: number }[];
-    timeFrame: TIMEFRAME;
+    data?: Candle[];
+    interval: INTERVAL;
+    timeRange?: TIME_RANGE;
     tokenInfo: { symbol: string; address: string };
+    aggregator?: string;
     error?: string;
   };
 
@@ -44,7 +50,8 @@ function renderChart(result: unknown) {
   return (
     <PriceChart
       data={typedResult.data}
-      timeFrame={typedResult.timeFrame}
+      interval={typedResult.interval}
+      timeRange={typedResult.timeRange}
       tokenInfo={typedResult.tokenInfo}
     />
   );
@@ -60,8 +67,8 @@ export const priceChartTool = {
   requiredEnvVars: ['CG_API_KEY'],
   execute: async ({
     contractAddress,
-    timeFrame,
-    timeDelta,
+    interval,
+    timeRange,
     tokenSymbol,
     aggregator,
     beforeTimestamp,
@@ -70,8 +77,8 @@ export const priceChartTool = {
       const history = await getPriceHistory(
         contractAddress,
         'solana',
-        timeFrame,
-        timeDelta,
+        interval,
+        timeRange,
         aggregator,
         beforeTimestamp,
       );
@@ -79,7 +86,8 @@ export const priceChartTool = {
       return {
         success: true,
         data: history,
-        timeFrame,
+        interval,
+        timeRange,
         tokenInfo: {
           symbol: tokenSymbol ?? contractAddress,
           address: contractAddress,
@@ -108,8 +116,7 @@ export const dexChartTool = {
   requiredEnvVars: ['CG_API_KEY'],
   execute: async ({
     contractAddress,
-    timeFrame,
-    timeDelta,
+    interval,
     tokenSymbol,
     aggregator,
     beforeTimestamp,
@@ -118,7 +125,7 @@ export const dexChartTool = {
       const history = await getDexPriceHistory(
         contractAddress,
         'solana',
-        timeFrame,
+        interval,
         aggregator,
         beforeTimestamp,
       );
@@ -126,11 +133,12 @@ export const dexChartTool = {
       return {
         success: true,
         data: history,
-        timeFrame,
+        interval,
         tokenInfo: {
           symbol: tokenSymbol ?? contractAddress,
           address: contractAddress,
         },
+        aggregator,
         suppressFollowUp: true,
       };
     } catch (error) {
