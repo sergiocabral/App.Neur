@@ -29,7 +29,7 @@ export class TimeRange {
       case TIME_RANGE.MAX:
         return 'max';
       default:
-        return '30'
+        return '30';
     }
   }
 
@@ -52,7 +52,7 @@ export class TimeRange {
       case TIME_RANGE.MAX:
         return 'Max';
       default:
-        return '1M'
+        return '1M';
     }
   }
 }

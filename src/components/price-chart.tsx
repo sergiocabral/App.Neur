@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   CandlestickSeries,
-  ChartOptions,
-  DeepPartial,
-  IChartApi,
-  ISeriesApi,
+  type ChartOptions,
+  type DeepPartial,
+  type IChartApi,
+  type ISeriesApi,
   LineSeries,
   createChart,
 } from 'lightweight-charts';
@@ -17,12 +17,13 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Candle, candleArrayToLine } from '@/types/chart-elements';
+import { type Candle, candleArrayToLine } from '@/types/chart-elements';
 import { INTERVAL, Interval } from '@/types/interval';
-import { TIME_RANGE, TimeRange } from '@/types/time-range';
+import { type TIME_RANGE, TimeRange } from '@/types/time-range';
 
 interface PriceChartProps {
   data: Candle[];
@@ -40,46 +41,19 @@ function shortenAddress(addr: string) {
   return addr.slice(0, 4) + '...' + addr.slice(-4);
 }
 
-const chartOptions: DeepPartial<ChartOptions> = {
-  height: 400,
-  width: 600,
-  layout: {
-    background: { color: '#222' },
-    textColor: '#DDD',
-  },
-  grid: {
-    vertLines: { color: '#444' },
-    horzLines: { color: '#444' },
-  },
-  timeScale: {
-    timeVisible: true,
-  },
-};
-
 function shouldScaleLine(
   interval: INTERVAL,
   timeRange: TIME_RANGE | undefined,
 ): boolean {
-  return interval == INTERVAL.DAYS && timeRange != undefined;
-}
-
-function computeMinMove(data: Candle[]) {
-  const minMove = Math.min(
-    ...data
-      .slice(1)
-      .map((d, i) => Math.abs(d.close - data[i].close))
-      .filter((diff) => diff > 0),
-  );
-
-  return minMove < 0.01
-    ? Math.pow(10, Math.floor(Math.log10(minMove)))
-    : 0.01;
+  return interval === INTERVAL.DAYS && timeRange !== undefined;
 }
 
 enum CHART_TYPES {
-  CANDLE,
-  LINE,
+  CANDLE = 0,
+  LINE = 1,
 }
+
+const FIXED_HEIGHT = 400;
 
 export default function LightweightChart({
   data,
@@ -89,109 +63,238 @@ export default function LightweightChart({
   aggregator,
 }: PriceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const candleButtonRef = useRef<HTMLButtonElement>(null);
-  const lineButtonRef = useRef<HTMLButtonElement>(null);
-  const chartRef = useRef<IChartApi>(null);
-  const seriesRef = useRef<ISeriesApi<any>>(null);
-  const selectedChartTypeRef = useRef<CHART_TYPES>(CHART_TYPES.CANDLE);
+  const chartRef = useRef<IChartApi | null>(null);
+  const seriesRef = useRef<
+    ISeriesApi<'Candlestick'> | ISeriesApi<'Line'> | null
+  >(null);
+  const [selectedChartType, setSelectedChartType] = useState<CHART_TYPES>(
+    CHART_TYPES.CANDLE,
+  );
+  const [isDarkMode, setIsDarkMode] = useState(
+    typeof document !== 'undefined' &&
+      document.documentElement.classList.contains('dark'),
+  );
   const timeRangeDisplay: string | undefined = timeRange
     ? TimeRange.mapTimeRangeToDisplay(timeRange)
     : undefined;
   const intervalDisplay = Interval.mapIntervalToDisplay(interval);
 
-  function switchToCandle() {
-    selectedChartTypeRef.current = CHART_TYPES.CANDLE;
+  const computeMinMove = useCallback((chartData: Candle[]) => {
+    const minMove = Math.min(
+      ...chartData
+        .slice(1)
+        .map((d, i) => Math.abs(d.close - chartData[i].close))
+        .filter((diff) => diff > 0),
+    );
+
+    return minMove < 0.01
+      ? Math.pow(10, Math.floor(Math.log10(minMove)))
+      : 0.01;
+  }, []);
+
+  const getThemeAwareChartOptions =
+    useCallback((): DeepPartial<ChartOptions> => {
+      return {
+        height: 400,
+        layout: {
+          background: {
+            color: isDarkMode ? '#222' : '#ffffff',
+          },
+          textColor: isDarkMode ? '#DDD' : '#333',
+        },
+        grid: {
+          vertLines: {
+            color: isDarkMode
+              ? 'rgba(70, 70, 70, 0.5)'
+              : 'rgba(220, 220, 220, 0.5)',
+            style: 1,
+          },
+          horzLines: {
+            color: isDarkMode
+              ? 'rgba(70, 70, 70, 0.5)'
+              : 'rgba(220, 220, 220, 0.5)',
+            style: 1,
+          },
+        },
+        timeScale: {
+          timeVisible: true,
+        },
+      };
+    }, [isDarkMode]);
+
+  const addCandleSeries = useCallback(() => {
+    if (!chartRef.current) return;
+
+    const computedMinMove = computeMinMove(data);
+    seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
+      priceFormat: {
+        type: 'price',
+        minMove: computedMinMove,
+      },
+    });
+    seriesRef.current.priceScale().applyOptions({
+      scaleMargins: {
+        top: 0.1,
+        bottom: 0.1,
+      },
+    });
+    seriesRef.current.setData(data);
+  }, [data, computeMinMove]);
+
+  const addLineSeries = useCallback(() => {
+    if (!chartRef.current) return;
+
+    const computedMinMove = computeMinMove(data);
+    const lineData = candleArrayToLine(data);
+    seriesRef.current = chartRef.current.addSeries(LineSeries, {
+      priceFormat: {
+        type: 'price',
+        minMove: computedMinMove,
+      },
+    });
+    // adjust for candle wicks affecting price scale, attempt to maintain similar scale
+    if (shouldScaleLine(interval, timeRange)) {
+      seriesRef.current.priceScale().applyOptions({
+        scaleMargins: {
+          top: 0.2,
+          bottom: 0.15,
+        },
+      });
+    }
+    seriesRef.current.setData(lineData);
+  }, [data, interval, timeRange, computeMinMove]);
+
+  const switchToCandle = useCallback(() => {
+    setSelectedChartType(CHART_TYPES.CANDLE);
     if (chartRef.current && seriesRef.current) {
       chartRef.current.removeSeries(seriesRef.current);
       addCandleSeries();
     }
-  }
+  }, [addCandleSeries]);
 
-  function switchToLine() {
-    selectedChartTypeRef.current = CHART_TYPES.LINE;
+  const switchToLine = useCallback(() => {
+    setSelectedChartType(CHART_TYPES.LINE);
     if (chartRef.current && seriesRef.current) {
       chartRef.current.removeSeries(seriesRef.current);
       addLineSeries();
     }
-  }
+  }, [addLineSeries]);
 
-  const addCandleSeries = useCallback(() => {
-    if (chartRef.current) {
-      const computedMinMove = computeMinMove(data);
-      seriesRef.current = chartRef.current.addSeries(CandlestickSeries, {
-        priceFormat: {
-          type: 'price',
-          minMove: computedMinMove,
-        },
-      });
-      seriesRef.current.priceScale().applyOptions({
-        scaleMargins: {
-          top: 0.1,
-          bottom: 0.1,
-        },
-      });
-      seriesRef.current.setData(data);
-    }
-  }, [data]);
+  const initChart = useCallback(() => {
+    if (!containerRef.current) return;
 
-  const addLineSeries = useCallback(() => {
-    if (chartRef.current) {
-      const computedMinMove = computeMinMove(data);
-      const lineData = candleArrayToLine(data);
-      seriesRef.current = chartRef.current.addSeries(LineSeries, {
-        priceFormat: {
-          type: 'price',
-          minMove: computedMinMove,
-        },
-      });
-      // adjust for candle wicks affecting price scale, attempt to maintain similar scale
-      if (shouldScaleLine(interval, timeRange)) {
-        seriesRef.current.priceScale().applyOptions({
-          scaleMargins: {
-            top: 0.2,
-            bottom: 0.15,
-          },
-        });
-      }
-      seriesRef.current.setData(lineData);
+    const containerWidth = containerRef.current.clientWidth;
+    const containerHeight = FIXED_HEIGHT;
+
+    chartRef.current = createChart(containerRef.current, {
+      ...getThemeAwareChartOptions(),
+      width: containerWidth,
+      height: containerHeight,
+    });
+
+
+    chartRef.current.timeScale().fitContent();
+
+    switch (selectedChartType) {
+      case CHART_TYPES.CANDLE:
+        addCandleSeries();
+        break;
+      case CHART_TYPES.LINE:
+        addLineSeries();
+        break;
+      default:
+        addCandleSeries();
     }
-  }, [data, interval, timeRange]);
+  }, [
+    getThemeAwareChartOptions,
+    selectedChartType,
+    addCandleSeries,
+    addLineSeries,
+  ]);
+
+  const handleResize = useCallback(() => {
+    if (!chartRef.current || !containerRef.current) return;
+
+    const newWidth = containerRef.current.clientWidth;
+    const newHeight = FIXED_HEIGHT;
+
+    requestAnimationFrame(() => {
+      chartRef.current?.applyOptions({
+        width: newWidth,
+        height: newHeight,
+      });
+      chartRef.current?.timeScale().fitContent();
+    });
+  }, []);
 
   useEffect(() => {
+    initChart();
+
+    const resizeObserver = new ResizeObserver(() => {
+      handleResize();
+    });
+
     if (containerRef.current) {
-      chartRef.current = createChart(containerRef.current, chartOptions);
-      chartRef.current.timeScale().fitContent();
-      // re-render safe
-      switch (selectedChartTypeRef.current) {
-        case CHART_TYPES.CANDLE:
-          addCandleSeries();
-          break;
-        case CHART_TYPES.LINE:
-          addLineSeries();
-          break;
-        default:
-          addCandleSeries();
-      }
+      resizeObserver.observe(containerRef.current);
     }
+
     return () => {
+      resizeObserver.disconnect();
       if (chartRef.current) {
+        if (seriesRef.current) {
+          chartRef.current.removeSeries(seriesRef.current);
+          seriesRef.current = null;
+        }
         chartRef.current.remove();
+        chartRef.current = null;
       }
     };
-  }, [addCandleSeries, addLineSeries, data]);
+  }, [initChart, handleResize]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    setIsDarkMode(document.documentElement.classList.contains('dark'));
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'class') {
+          const newIsDarkMode =
+            document.documentElement.classList.contains('dark');
+          setIsDarkMode(newIsDarkMode);
+
+          if (chartRef.current) {
+            chartRef.current.applyOptions(getThemeAwareChartOptions());
+          }
+        }
+      });
+    });
+
+    observer.observe(document.documentElement, { attributes: true });
+
+    return () => observer.disconnect();
+  }, [getThemeAwareChartOptions]);
 
   return (
-    <Card>
+    <Card className="bg-background">
       <CardHeader className="border-b py-5">
-        <div className="grid flex-1 gap-1">
-          <CardTitle>
-            <span style={{ marginRight: '5px' }}>{symbol}</span>
+        <div className="grid gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <CardTitle className="text-xl font-semibold">{symbol}</CardTitle>
             {timeRangeDisplay && (
-              <span style={{ marginRight: '5px' }}>{timeRangeDisplay}</span>
+              <span className="rounded-full bg-muted px-2 py-0.5 text-sm text-muted-foreground">
+                {timeRangeDisplay}
+              </span>
             )}
-            <span style={{ marginRight: '5px' }}>{intervalDisplay}</span>
-            {aggregator && <span>{aggregator}</span>}
-          </CardTitle>
+            <span className="rounded-full bg-muted px-2 py-0.5 text-sm text-muted-foreground">
+              {intervalDisplay}
+            </span>
+            {aggregator && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-sm text-muted-foreground">
+                {aggregator}
+              </span>
+            )}
+          </div>
           <CardDescription>
             Contract Address:
             <span className="hidden sm:inline"> {address}</span>
@@ -200,23 +303,33 @@ export default function LightweightChart({
         </div>
       </CardHeader>
 
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
-        <Button
-          ref={candleButtonRef}
-          onClick={switchToCandle}
-          variant={'secondary'}
-        >
-          Candle
-        </Button>
-        <Button
-          ref={lineButtonRef}
-          onClick={switchToLine}
-          variant={'secondary'}
-        >
-          Line
-        </Button>
-        <div ref={containerRef}></div>
+      <CardContent className="relative pt-6">
+        <div
+          ref={containerRef}
+          className="h-[400px] w-full min-w-[300px]"
+          style={{ contain: 'strict' }}
+        />
       </CardContent>
+      <CardFooter className="flex items-center justify-between">
+        <div className="flex gap-2">
+          <Button
+            onClick={switchToCandle}
+            variant={
+              selectedChartType === CHART_TYPES.CANDLE ? 'default' : 'secondary'
+            }
+          >
+            Candle
+          </Button>
+          <Button
+            onClick={switchToLine}
+            variant={
+              selectedChartType === CHART_TYPES.LINE ? 'default' : 'secondary'
+            }
+          >
+            Line
+          </Button>
+        </div>
+      </CardFooter>
     </Card>
   );
 }
