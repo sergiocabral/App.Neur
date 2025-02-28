@@ -37,17 +37,13 @@ interface DriftAccountInfoProps {
 }
 
 export default function DriftAccountInfo({
-  data: {
-    success,
-    result,
-  },
-  addToolResult : _addToolResult,
-}: DriftAccountInfoProps ) {
-  
+  data: { success, result },
+  addToolResult: _addToolResult,
+}: DriftAccountInfoProps) {
   const [showSpotPositions, setShowSpotPositions] = useState(true);
   const [showAccountDetails, setShowAccountDetails] = useState(false);
-  
-  if(!success) {
+
+  if (!success || !result) {
     return (
       <Card className="bg-destructive/10 p-6">
         <h2 className="mb-2 text-xl font-semibold text-destructive">
@@ -57,7 +53,7 @@ export default function DriftAccountInfo({
           {JSON.stringify(result, null, 2)}
         </pre>
       </Card>
-    )
+    );
   }
 
   const {
@@ -70,7 +66,7 @@ export default function DriftAccountInfo({
     spotPositions = [],
     perpPositions = [],
   } = result;
-  
+
   return (
     <Card className="w-full max-w-xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <CardHeader className="pb-2">
@@ -144,7 +140,7 @@ export default function DriftAccountInfo({
                   <div className="flex items-center justify-between">
                     <span className="font-medium">{position?.symbol}</span>
                     <Badge variant="secondary" className="text-xs">
-                        {position?.type}
+                      {position?.type}
                     </Badge>
                   </div>
                   <div className="grid gap-1 text-sm">
