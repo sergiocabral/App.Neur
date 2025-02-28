@@ -8,6 +8,9 @@ import { allChartTools } from './chart';
 import { createAction } from './create-action';
 import { definedFiTools } from './defined-fi';
 import { allDexscreenerTools } from './dexscreener';
+import { allDriftTools } from './drift';
+import { createDriftAccount } from './drift/create-account';
+import { getDriftAccountInfo } from './drift/get-account-info';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
@@ -20,8 +23,6 @@ import { swapTokens } from './swap';
 import { allTelegramTools } from './telegram';
 import { transferTokens } from './transfer';
 import { allTwitterTools } from './twitter';
-import { createDriftAccount } from './drift/create-account';
-import { getDriftAccountInfo } from './drift/get-account-info';
 
 interface ToolMetadata {
   description: string;
@@ -57,6 +58,7 @@ export const allTools: Record<string, ToolConfig> = {
   manageMeteoraLiquidityPositions: meteoraLp(),
   createDriftAccount: createDriftAccount(),
   getDriftAccountInfo: getDriftAccountInfo(),
+  ...allDriftTools,
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,
