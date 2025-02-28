@@ -222,7 +222,7 @@ export async function createDriftAccount({
       };
     }
     const result = await agent.createDriftUserAccount(amount, symbol);
-    return { success: true, result };
+    return { success: true, result, step: 'completed' as const };
   } catch (error) {
     console.log('Error while creating drift account', error);
     return {
