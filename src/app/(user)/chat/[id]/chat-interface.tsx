@@ -4,7 +4,6 @@ import {
   SetStateAction,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -15,14 +14,7 @@ import { SavedPrompt } from '@prisma/client';
 import * as Collapsible from '@radix-ui/react-collapsible';
 import { Attachment, JSONValue, Message } from 'ai';
 import { useChat } from 'ai/react';
-import {
-  Bookmark,
-  ChevronDown,
-  Image as ImageIcon,
-  Loader2,
-  SendHorizontal,
-  X,
-} from 'lucide-react';
+import { Bookmark, ChevronDown, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
@@ -36,38 +28,31 @@ import { Confirmation } from '@/components/confimation';
 import { FloatingWallet } from '@/components/floating-wallet';
 import Logo from '@/components/logo';
 import CreateActionMessage from '@/components/message/create-action/create-action';
-import { DriftCard } from '@/components/message/drift/drift-card';
+import { SpotSwapDrift } from '@/components/message/drift/SpotTokenSwapDrift';
+import { DriftPrepTrade } from '@/components/message/drift/drfitPrepTrade';
 import DriftAccountInfo from '@/components/message/drift/drift-account-info';
+import { DriftCard } from '@/components/message/drift/drift-card';
+import { DriftDeposit } from '@/components/message/drift/drift-deposit';
 import { MeteoraLpManager } from '@/components/message/meteora/meteora-lp-manager';
 import { MeteoraPositionCard } from '@/components/message/meteora/meteora-position-card';
 import { LaunchResult } from '@/components/message/pumpfun-launch/launch-result';
 import { SwapCard } from '@/components/message/swap/swap-card';
 import { ToolResult } from '@/components/message/tool-result';
 import { TransferCard } from '@/components/message/transfer/transfer-card';
-import { SavedPromptsMenu } from '@/components/saved-prompts-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import usePolling from '@/hooks/use-polling';
 import { StreamingState, useStreamingState } from '@/hooks/use-streaming-state';
 import { useUser } from '@/hooks/use-user';
 import { useWalletPortfolio } from '@/hooks/use-wallet-portfolio';
 import { EVENTS } from '@/lib/events';
-import { uploadImage } from '@/lib/upload';
 import { cn, shouldHideAssistantMessage } from '@/lib/utils';
 import { getMessageIdFromAnnotations } from '@/lib/utils/ai';
 import { generateUUID } from '@/lib/utils/format';
-import {
-  createSavedPrompt,
-  getSavedPrompts,
-  setSavedPromptLastUsedAt,
-} from '@/server/actions/saved-prompt';
+import { createSavedPrompt } from '@/server/actions/saved-prompt';
 import { DataStreamDelta } from '@/types/stream';
 import { type ToolActionResult, ToolUpdate } from '@/types/util';
 
 import { ConversationInput } from '../../home/conversation-input';
-import { DriftPrepTrade } from '@/components/message/drift/drfitPrepTrade';
-import { SpotSwapDrift } from '@/components/message/drift/SpotTokenSwapDrift';
 
 const TOOL_COMPONENTS: Record<
   string,
@@ -96,14 +81,6 @@ const TOOL_COMPONENTS: Record<
     component: TransferCard,
     displayName: '➡️ Transfer Tokens',
   },
-  createDriftAccount: {
-    component: DriftCard,
-    displayName: '👤 Create Drift Account',
-  }, 
-  getDriftAccountInfo: {
-    component: DriftAccountInfo,
-    displayName: '👤 Get Drift Account Info',
-  },
   openMeteoraLiquidityPosition: {
     component: MeteoraPositionCard,
     displayName: '💧 Open Meteora LP',
@@ -112,14 +89,26 @@ const TOOL_COMPONENTS: Record<
     component: MeteoraLpManager,
     displayName: '💧 Manage Meteora LPs',
   },
+  createDriftAccount: {
+    component: DriftCard,
+    displayName: '👤 Create Drift Account',
+  },
+  getDriftAccountInfo: {
+    component: DriftAccountInfo,
+    displayName: '👤 Get Drift Account Info',
+  },
+  depositToDriftAccount: {
+    component: DriftDeposit,
+    displayName: '💰 Deposit to Drift',
+  },
   tradeDriftPerpAccount: {
     component: DriftPrepTrade,
     displayName: '🌊 Prep trade',
   },
-  SpotTokenSwapDrift:{
+  SpotTokenSwapDrift: {
     component: SpotSwapDrift,
     displayName: '🔄 Swap Tokens',
-  }
+  },
 };
 
 // Types

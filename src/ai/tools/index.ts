@@ -9,12 +9,12 @@ import { createAction } from './create-action';
 import { definedFiTools } from './defined-fi';
 import { allDexscreenerTools } from './dexscreener';
 import { createDriftAccount } from './drift/create-account';
+import { getDriftAccountInfo } from './drift/get-account-info';
 import {
   SpotTokenSwapDrift,
   getDriftAPY,
   tradeDriftPerpAccount,
 } from './drift/trade';
-import { getDriftAccountInfo } from './drift/get-account-info';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
