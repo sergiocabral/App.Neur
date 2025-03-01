@@ -8,6 +8,39 @@ export interface TokenInfo {
   mint?: string;
 }
 
+export interface SpotPosition {
+  availableBalance: number;
+  symbol: string;
+  openAsks: number;
+  openBids: number;
+  openOrders: number;
+  type: string;
+}
+
+export interface perpPosition { 
+  market: string; 
+  baseAssetAmount: number; 
+  quoteAssetAmount: number; 
+  quoteEntryAmount: number; 
+  quoteBreakEvenAmount: number; 
+  settledPnl: number; 
+  openAsks: number; 
+  openBids: number; 
+  openOrders: number; 
+  positionType: string; 
+}
+
+export interface DriftAccountInfoType {
+  name: string;
+  accountAddress: string;
+  authority: string;
+  overallBalance: number;
+  settledPerpPnl: string;
+  lastActiveSlot: number;
+  perpPositions: perpPosition[];
+  spotPositions: (SpotPosition | undefined)[];
+}
+
 export interface SwapDataResult {
   step?:
     | 'token-search'
@@ -183,6 +216,21 @@ export interface DriftSpotTrade {
   error?: string;
 }
 
+export interface ManageDriftPosition {
+  step?:
+    | 'get-info'
+    | 'awaiting-confirmation'
+    | 'confirmed'
+    | 'processing'
+    | 'completed'
+    | 'canceled'
+    | 'failed';
+  info?: DriftAccountInfoType;
+  selectedPrepPositon?: perpPosition; 
+  signature?: string;
+  error?: string;
+}
+
 export interface ToolDataStream {
   type: 'stream-result-data';
   status?: 'streaming' | 'idle' | 'completed' | undefined;
@@ -196,7 +244,8 @@ export interface ToolDataStream {
     | MeteoraPositionResult
     | MeteoraPositionUpdateResult
     | DriftPrepTrade
-    | DriftSpotTrade;
+    | DriftSpotTrade
+    | ManageDriftPosition;
 }
 
 export type DataStreamDelta = ToolDataStream;

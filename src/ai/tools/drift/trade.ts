@@ -10,11 +10,11 @@ import {
   tradeDriftPerpAccountAction,
 } from '@/server/actions/drift';
 
-import { ToolConfig, WrappedToolProps } from '.';
-import { openai } from '../providers';
-import { driftTools } from '../solana/drift';
+import { ToolConfig, WrappedToolProps } from '..';
+import { openai } from '../../providers';
+import { driftTools } from '../../solana/drift';
 
-const getDriftAPY = () => {
+export const getDriftAPY = () => {
   const metadata = {
     description:
       'Get Drift APY for a given symbol or all symbols (if no symbol is provided)',
@@ -305,8 +305,4 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
     buildTool,
     confirm: SpotTokenSwapDriftAction,
   };
-};
-
-export const allDriftTools = {
-  getDriftAPY: getDriftAPY(),
 };

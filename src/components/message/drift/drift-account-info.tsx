@@ -1,50 +1,177 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, X } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { DriftAccountInfoType, ManageDriftPosition, perpPosition, SpotPosition } from '@/types/stream';
+import { Button } from '@/components/ui/button';
+import { AnimatePresence, motion } from 'framer-motion';
+import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
+import { truncate } from '@/lib/utils/format';
 
-interface SpotPosition {
-  availableBalance: number;
-  symbol: string;
-  openAsks: number;
-  openBids: number;
-  openOrders: number;
-  type: string;
-}
-
-interface AccountInfo {
-  name: string;
-  accountAddress: string;
-  authority: string;
-  overallBalance: number;
-  settledPerpPnl: string;
-  lastActiveSlot: number;
-  perpPositions: any[];
-  spotPositions: SpotPosition[];
-}
 
 interface DriftAccountInfoProps {
   data: {
     success: boolean;
-    result: AccountInfo;
+    result: ManageDriftPosition;
   };
-  addToolResult: (result: AccountInfo) => void;
+  addToolResult: (result: ManageDriftPosition) => void;
 }
 
 export default function DriftAccountInfo({
   data: { success, result },
-  addToolResult: _addToolResult,
+  addToolResult: addToolResult,
 }: DriftAccountInfoProps) {
   const [showSpotPositions, setShowSpotPositions] = useState(true);
   const [showAccountDetails, setShowAccountDetails] = useState(false);
   const [showPerpPositions, setShowPerpPositions] = useState(true);
+  const [selectedPrepPosition, setSelectedPrepPosition] = useState<perpPosition | null>(null);
+  const [overlay, setOverlay] = useState(
+    result?.step === 'processing' ||
+      result?.step === 'canceled' ||
+      result?.step === 'completed',
+  );
+  const [signature, setSignature] = useState(result?.signature);
 
-  if (!success || !result) {
+  useEffect(()=>{
+    if(result){
+      setOverlay(
+        result?.step === 'processing' ||
+        result?.step === 'canceled' ||
+        result?.step === 'completed',
+      );
+      setSignature(result?.signature);
+    }
+  }, [result, selectedPrepPosition]);
+
+  const handleCancel = async() => {
+    setSelectedPrepPosition(null);
+    await addToolResult({
+      step: 'canceled',
+    });
+  };
+
+  const handleConfirmation = async() => {
+    if(selectedPrepPosition){
+        console.log(selectedPrepPosition);
+        await addToolResult({
+        step: 'confirmed',
+        selectedPrepPositon: selectedPrepPosition,
+      });
+    }
+  }
+
+  if(overlay){
+    return (
+    <Card className="overflow-hidden">
+      {result?.step != 'completed' && (
+        <CardContent className="space-y-1">
+          <div className="flex flex-col gap-4">
+            <AnimatePresence mode="wait">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="py-8"
+              >
+                <div className="flex flex-col items-center space-y-4 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 200,
+                      damping: 15,
+                    }}
+                    className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
+                  >
+                    {result?.step === 'canceled' ? (
+                      <X className="h-8 w-8 text-destructive" />
+                    ) : (
+                      <ProcessingAnimation />
+                    )}
+                  </motion.div>
+
+                  <div className="space-y-1">
+                    {result?.step === 'canceled' ? (
+                      <h3 className="text-lg font-medium">Canceled</h3>
+                    ) : (
+                      <h3 className="text-lg font-medium">
+                        Processing Your request...
+                      </h3>
+                    )}
+                    {result?.step !== 'canceled' && (
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <span className="font-medium">
+                          {selectedPrepPosition?.market||''}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </CardContent>
+      )}
+
+      {result?.step === 'completed' && overlay && (
+        <CardContent className="space-y-1">
+          <div className="flex flex-col gap-4">
+            <AnimatePresence mode="wait">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="py-8"
+              >
+                <div className="flex flex-col items-center space-y-4 text-center">
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{
+                      type: 'spring',
+                      stiffness: 200,
+                      damping: 15,
+                    }}
+                    className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
+                  >
+                    <CompletedAnimation />
+                  </motion.div>
+
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-medium">
+                      Successfully Closed {selectedPrepPosition?.positionType} {selectedPrepPosition?.market} position!
+                    </h3>
+                    <div className="flex items-center justify-center gap-2 text-sm">
+                      Signature:{' '}
+                      <a
+                        href={`https://solscan.io/tx/${result?.signature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-primary hover:underline"
+                      >
+                        <span className="font-mono">
+                          {truncate(result?.signature ?? '', 8)}
+                        </span>
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+        </CardContent>
+      )}
+    </Card>)
+  }
+
+  if (!success || !result || !result.info) {
     return (
       <Card className="bg-destructive/10 p-6">
         <h2 className="mb-2 text-xl font-semibold text-destructive">
@@ -66,7 +193,7 @@ export default function DriftAccountInfo({
     lastActiveSlot = 0,
     spotPositions = [],
     perpPositions = [],
-  } = result;
+  } = result.info;
 
   return (
     <Card className="w-full max-w-xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -160,7 +287,7 @@ export default function DriftAccountInfo({
                     <div className="flex flex-col gap-1">
                       <span className="text-muted-foreground">Available</span>
                       <span
-                        className={`font-mono ${position?.availableBalance < 0 ? 'text-red-400' : 'text-green-400'}`}
+                        className={`font-mono ${(!position?.availableBalance || position?.availableBalance < 0) ? 'text-red-400' : 'text-green-400'}`}
                       >
                         {position?.availableBalance.toFixed(8)}
                       </span>
@@ -217,7 +344,7 @@ export default function DriftAccountInfo({
                   key={index}
                   className="rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/50"
                 >
-                  <div className="mb-2 flex items-center">
+                  <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{position?.market}</span>
                       <Badge
@@ -231,6 +358,14 @@ export default function DriftAccountInfo({
                         {position?.positionType.toUpperCase()}
                       </Badge>
                     </div>
+                    <Button 
+                      variant="destructive" 
+                      size="sm"
+                      onClick={()=> setSelectedPrepPosition(position)}
+                      className="text-xs px-2 py-1 h-8"
+                    >
+                      Close Position
+                    </Button>
                   </div>
                   <div className="grid gap-3">
                     <div className="grid grid-cols-4 items-center gap-2 text-sm">
@@ -299,7 +434,7 @@ export default function DriftAccountInfo({
                 </div>
               ))}
             </div>
-          )}
+            )}
 
           {showPerpPositions && perpPositions.length === 0 && (
             <div className="py-2 text-center text-sm text-muted-foreground">
@@ -307,6 +442,24 @@ export default function DriftAccountInfo({
             </div>
           )}
         </div>
+
+      {result?.step === 'awaiting-confirmation' && (
+        <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
+            {selectedPrepPosition && (
+              <div className="flex items-center justify-between gap-2">
+                <Button onClick={handleCancel} variant="default">
+                  Cancel
+                </Button>
+                <Button onClick={handleConfirmation} variant="default">
+                  Confirm
+                </Button>
+              </div>
+            )}
+          <div className="text-sm text-muted-foreground">
+            Ready to close {selectedPrepPosition?.positionType} {selectedPrepPosition?.market} position!
+          </div>
+        </CardFooter>
+      )}
       </CardContent>
     </Card>
   );

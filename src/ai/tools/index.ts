@@ -8,12 +8,12 @@ import { allChartTools } from './chart';
 import { createAction } from './create-action';
 import { definedFiTools } from './defined-fi';
 import { allDexscreenerTools } from './dexscreener';
+import { createDriftAccount } from './drift/create-account';
 import {
   SpotTokenSwapDrift,
-  allDriftTools,
+  getDriftAPY,
   tradeDriftPerpAccount,
-} from './drift';
-import { createDriftAccount } from './drift/create-account';
+} from './drift/trade';
 import { getDriftAccountInfo } from './drift/get-account-info';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
@@ -64,7 +64,7 @@ export const allTools: Record<string, ToolConfig> = {
   SpotTokenSwapDrift: SpotTokenSwapDrift(),
   createDriftAccount: createDriftAccount(),
   getDriftAccountInfo: getDriftAccountInfo(),
-  ...allDriftTools,
+  getDriftAPY: getDriftAPY(),
   ...allMagicEdenTools,
   ...allChartTools,
   ...allDexscreenerTools,
