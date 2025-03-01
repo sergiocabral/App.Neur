@@ -3,9 +3,10 @@ import { z } from 'zod';
 
 import { streamUpdate } from '@/lib/utils';
 import { ToolConfig, WrappedToolProps } from '..';
-import { getDriftAccountInfo as getDriftAccountInfoAction, tradeDriftPerpAccountAction } from '@/server/actions/drift';
+import { getDriftAccountInfo as getDriftAccountInfoAction, getMainnetDriftMarkets, tradeDriftPerpAccountAction } from '@/server/actions/drift';
 import { DriftAccountInfoType, perpPosition } from '@/types/stream';
 import { openai } from '@/ai/providers';
+import { fetchPriceByPyth } from '@/server/actions/pyth';
 
 export const getDriftAccountInfo = (): ToolConfig => {
 
@@ -84,7 +85,7 @@ export const getDriftAccountInfo = (): ToolConfig => {
         };
 
         const result = await getDriftAccountInfoAction();
-
+        console.log(result);
         streamUpdate({
           stream: dataStream,
           update: {
@@ -183,16 +184,35 @@ export const getDriftAccountInfo = (): ToolConfig => {
     buildTool,
     confirm: async (toolResults: any, extraData: any) => {
       const { selectedPrepPositon }:{selectedPrepPositon: perpPosition} = toolResults;
+      console.log("starting to confirm", selectedPrepPositon);
       if (!selectedPrepPositon) {
         return {
           success: false,
-          error: 'Missing Prep Position',
+          error: 'Missing Prep Position or Info about account',
         };
       }
-      try {   
+      try {
+        const markets = await getMainnetDriftMarkets(extraData);
+        const baseAsset = markets.result?.PrepMarkets.filter((market) => market.symbol === selectedPrepPositon.market)[0];
+        if (!baseAsset || !baseAsset.pythFeedId) {
+          console.log("market not found!");
+          return {
+            success: false,
+            error: 'Market not found',
+          };
+        }
+        const price = await fetchPriceByPyth({ priceFeedID: baseAsset.pythFeedId }, extraData);
+        if (!price.success || !price.data) {
+          console.log("failed to get price!");
+          return {
+            success: false,
+            error: 'Failed to get price',
+          };
+        }
+        const amount = Math.ceil(selectedPrepPositon.baseAssetAmount * Number(price.data) * 100) / 100;
         const result = await tradeDriftPerpAccountAction({
-          amount: selectedPrepPositon.quoteAssetAmount,
-          symbol: selectedPrepPositon.market.split('-')[0],
+          amount: amount,
+          symbol: baseAsset.baseAssetSymbol,
           action: selectedPrepPositon.positionType === "long" ? 'short' : 'long',
           type: 'market',
           price: selectedPrepPositon.quoteEntryAmount,

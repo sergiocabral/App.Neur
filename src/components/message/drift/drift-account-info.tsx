@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { AnimatePresence, motion } from 'framer-motion';
 import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
 import { truncate } from '@/lib/utils/format';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 interface DriftAccountInfoProps {
@@ -46,6 +47,7 @@ export default function DriftAccountInfo({
       );
       setSignature(result?.signature);
     }
+    console.log(success, result);
   }, [result, selectedPrepPosition]);
 
   const handleCancel = async() => {
@@ -171,17 +173,26 @@ export default function DriftAccountInfo({
     </Card>)
   }
 
-  if (!success || !result || !result.info) {
+  if (!success) {
     return (
       <Card className="bg-destructive/10 p-6">
         <h2 className="mb-2 text-xl font-semibold text-destructive">
           Drift Account Retrieval Failed
         </h2>
         <pre className="text-sm text-destructive/80">
-          {JSON.stringify(result, null, 2)}
+          {JSON.stringify(result.error, null, 2)}
         </pre>
       </Card>
     );
+  }
+
+
+  if(!result || !result?.info){
+    return(
+      <>
+        <Skeleton className="h-[300px] w-full rounded-lg" />
+      </>
+    )
   }
 
   const {
@@ -443,18 +454,16 @@ export default function DriftAccountInfo({
           )}
         </div>
 
-      {result?.step === 'awaiting-confirmation' && (
+      {result?.step === 'awaiting-confirmation' &&selectedPrepPosition && (
         <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
-            {selectedPrepPosition && (
-              <div className="flex items-center justify-between gap-2">
-                <Button onClick={handleCancel} variant="default">
-                  Cancel
-                </Button>
-                <Button onClick={handleConfirmation} variant="default">
-                  Confirm
-                </Button>
-              </div>
-            )}
+          <div className="flex items-center justify-between gap-2">
+            <Button onClick={handleCancel} variant="default">
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmation} variant="default">
+              Confirm
+            </Button>
+          </div>
           <div className="text-sm text-muted-foreground">
             Ready to close {selectedPrepPosition?.positionType} {selectedPrepPosition?.market} position!
           </div>
