@@ -15,6 +15,7 @@ import {
   getDriftAPY,
   tradeDriftPerpAccount,
 } from './drift/trade';
+import { depositToDriftAccount } from './drift/deposit-to-account';
 import { allJinaTools } from './jina';
 import { launchPumpFun } from './launch-pump';
 import { allMagicEdenTools } from './magic-eden';
@@ -64,6 +65,7 @@ export const allTools: Record<string, ToolConfig> = {
   SpotTokenSwapDrift: SpotTokenSwapDrift(),
   createDriftAccount: createDriftAccount(),
   getDriftAccountInfo: getDriftAccountInfo(),
+  depositToDriftAccount: depositToDriftAccount(),
   getDriftAPY: getDriftAPY(),
   ...allMagicEdenTools,
   ...allChartTools,

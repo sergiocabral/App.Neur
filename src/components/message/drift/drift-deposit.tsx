@@ -25,9 +25,9 @@ const DRIFT_BUTTON_TEXT = {
   'awaiting-confirmation': 'Confirm',
   confirmed: 'Confirmed',
   processing: 'Processing...',
-  completed: 'Drift Complete',
+  completed: 'Deposit Complete',
   canceled: 'Canceled',
-  failed: 'Drift Failed',
+  failed: 'Deposit Failed',
 } as const;
 
 interface DriftDepositProps {
