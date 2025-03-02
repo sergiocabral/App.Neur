@@ -15,17 +15,17 @@ export interface SpotPosition {
   type: string;
 }
 
-export interface perpPosition { 
-  market: string; 
-  baseAssetAmount: number; 
-  quoteAssetAmount: number; 
-  quoteEntryAmount: number; 
-  quoteBreakEvenAmount: number; 
-  settledPnl: number; 
-  openAsks: number; 
-  openBids: number; 
-  openOrders: number; 
-  positionType: string; 
+export interface perpPosition {
+  market: string;
+  baseAssetAmount: number;
+  quoteAssetAmount: number;
+  quoteEntryAmount: number;
+  quoteBreakEvenAmount: number;
+  settledPnl: number;
+  openAsks: number;
+  openBids: number;
+  openOrders: number;
+  positionType: string;
 }
 
 export interface DriftAccountInfoType {
@@ -145,7 +145,7 @@ export interface DepositDriftDataResult {
   symbol?: string;
   amount?: number;
   availableSymbols?: Array<{ symbol: string; mint: string }>;
-  signature?: string;
+  txSig?: string;
   account?: string;
 }
 
@@ -239,7 +239,7 @@ export interface ManageDriftPosition {
     | 'canceled'
     | 'failed';
   info?: DriftAccountInfoType;
-  selectedPrepPositon?: perpPosition; 
+  selectedPrepPositon?: perpPosition;
   signature?: string;
   error?: string;
 }

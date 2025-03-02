@@ -223,19 +223,19 @@ function DriftDetails({
 }) {
   return (
     <>
-      {isCompleted && result.signature && (
-        <div className="space-y-2 text-sm">
+      {isCompleted && result.txSig && (
+        <div className="space-y-2 pt-2 text-sm">
           <div className="flex items-center justify-between pt-2">
             <span className="text-muted-foreground">Transaction</span>
             <a
-              href={`https://solscan.io/tx/${result.signature}`}
+              href={`https://solscan.io/tx/${result.txSig}`}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-primary hover:underline"
             >
               <span className="font-mono">
-                {result.signature.slice(0, 8)}...
-                {result.signature.slice(-8)}
+                {result.txSig.slice(0, 8)}...
+                {result.txSig.slice(-8)}
               </span>
               <ExternalLink className="h-3 w-3" />
             </a>
