@@ -2,18 +2,24 @@
 
 import { useEffect, useState } from 'react';
 
+import { AnimatePresence, motion } from 'framer-motion';
 import { ChevronDown, ChevronUp, ExternalLink, X } from 'lucide-react';
 
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { DriftAccountInfoType, ManageDriftPosition, perpPosition, SpotPosition } from '@/types/stream';
 import { Button } from '@/components/ui/button';
-import { AnimatePresence, motion } from 'framer-motion';
-import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
-import { truncate } from '@/lib/utils/format';
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { truncate } from '@/lib/utils/format';
+import { ManageDriftPosition, perpPosition } from '@/types/stream';
 
+import { CompletedAnimation, ProcessingAnimation } from '../swap/swap-status';
 
 interface DriftAccountInfoProps {
   data: {
@@ -30,7 +36,8 @@ export default function DriftAccountInfo({
   const [showSpotPositions, setShowSpotPositions] = useState(true);
   const [showAccountDetails, setShowAccountDetails] = useState(false);
   const [showPerpPositions, setShowPerpPositions] = useState(true);
-  const [selectedPrepPosition, setSelectedPrepPosition] = useState<perpPosition | null>(null);
+  const [selectedPrepPosition, setSelectedPrepPosition] =
+    useState<perpPosition | null>(null);
   const [overlay, setOverlay] = useState(
     result?.step === 'processing' ||
       result?.step === 'canceled' ||
@@ -38,139 +45,141 @@ export default function DriftAccountInfo({
   );
   const [signature, setSignature] = useState(result?.signature);
 
-  useEffect(()=>{
-    if(result){
+  useEffect(() => {
+    if (result) {
       setOverlay(
         result?.step === 'processing' ||
-        result?.step === 'canceled' ||
-        result?.step === 'completed',
+          result?.step === 'canceled' ||
+          result?.step === 'completed',
       );
       setSignature(result?.signature);
     }
     console.log(success, result);
   }, [result, selectedPrepPosition]);
 
-  const handleCancel = async() => {
+  const handleCancel = async () => {
     setSelectedPrepPosition(null);
     await addToolResult({
       step: 'canceled',
     });
   };
 
-  const handleConfirmation = async() => {
-    if(selectedPrepPosition){
-        console.log(selectedPrepPosition);
-        await addToolResult({
+  const handleConfirmation = async () => {
+    if (selectedPrepPosition) {
+      console.log(selectedPrepPosition);
+      await addToolResult({
         step: 'confirmed',
         selectedPrepPositon: selectedPrepPosition,
       });
     }
-  }
+  };
 
-  if(overlay){
+  if (overlay) {
     return (
-    <Card className="overflow-hidden">
-      {result?.step != 'completed' && (
-        <CardContent className="space-y-1">
-          <div className="flex flex-col gap-4">
-            <AnimatePresence mode="wait">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="py-8"
-              >
-                <div className="flex flex-col items-center space-y-4 text-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{
-                      type: 'spring',
-                      stiffness: 200,
-                      damping: 15,
-                    }}
-                    className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
-                  >
-                    {result?.step === 'canceled' ? (
-                      <X className="h-8 w-8 text-destructive" />
-                    ) : (
-                      <ProcessingAnimation />
-                    )}
-                  </motion.div>
+      <Card className="overflow-hidden">
+        {result?.step != 'completed' && (
+          <CardContent className="space-y-1">
+            <div className="flex flex-col gap-4">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="py-8"
+                >
+                  <div className="flex flex-col items-center space-y-4 text-center">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 200,
+                        damping: 15,
+                      }}
+                      className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
+                    >
+                      {result?.step === 'canceled' ? (
+                        <X className="h-8 w-8 text-destructive" />
+                      ) : (
+                        <ProcessingAnimation />
+                      )}
+                    </motion.div>
 
-                  <div className="space-y-1">
-                    {result?.step === 'canceled' ? (
-                      <h3 className="text-lg font-medium">Canceled</h3>
-                    ) : (
-                      <h3 className="text-lg font-medium">
-                        Processing Your request...
-                      </h3>
-                    )}
-                    {result?.step !== 'canceled' && (
-                      <div className="flex items-center justify-center gap-2 text-sm">
-                        <span className="font-medium">
-                          {selectedPrepPosition?.market||''}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </CardContent>
-      )}
-
-      {result?.step === 'completed' && overlay && (
-        <CardContent className="space-y-1">
-          <div className="flex flex-col gap-4">
-            <AnimatePresence mode="wait">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="py-8"
-              >
-                <div className="flex flex-col items-center space-y-4 text-center">
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{
-                      type: 'spring',
-                      stiffness: 200,
-                      damping: 15,
-                    }}
-                    className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
-                  >
-                    <CompletedAnimation />
-                  </motion.div>
-
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-medium">
-                      Successfully Closed {selectedPrepPosition?.positionType} {selectedPrepPosition?.market} position!
-                    </h3>
-                    <div className="flex items-center justify-center gap-2 text-sm">
-                      Signature:{' '}
-                      <a
-                        href={`https://solscan.io/tx/${result?.signature}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-primary hover:underline"
-                      >
-                        <span className="font-mono">
-                          {truncate(result?.signature ?? '', 8)}
-                        </span>
-                        <ExternalLink className="h-3 w-3" />
-                      </a>
+                    <div className="space-y-1">
+                      {result?.step === 'canceled' ? (
+                        <h3 className="text-lg font-medium">Canceled</h3>
+                      ) : (
+                        <h3 className="text-lg font-medium">
+                          Processing Your request...
+                        </h3>
+                      )}
+                      {result?.step !== 'canceled' && (
+                        <div className="flex items-center justify-center gap-2 text-sm">
+                          <span className="font-medium">
+                            {selectedPrepPosition?.market || ''}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            </AnimatePresence>
-          </div>
-        </CardContent>
-      )}
-    </Card>)
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </CardContent>
+        )}
+
+        {result?.step === 'completed' && overlay && (
+          <CardContent className="space-y-1">
+            <div className="flex flex-col gap-4">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  className="py-8"
+                >
+                  <div className="flex flex-col items-center space-y-4 text-center">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{
+                        type: 'spring',
+                        stiffness: 200,
+                        damping: 15,
+                      }}
+                      className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
+                    >
+                      <CompletedAnimation />
+                    </motion.div>
+
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-medium">
+                        Successfully Closed {selectedPrepPosition?.positionType}{' '}
+                        {selectedPrepPosition?.market} position!
+                      </h3>
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        Signature:{' '}
+                        <a
+                          href={`https://solscan.io/tx/${result?.signature}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-primary hover:underline"
+                        >
+                          <span className="font-mono">
+                            {truncate(result?.signature ?? '', 8)}
+                          </span>
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+    );
   }
 
   if (!success) {
@@ -186,13 +195,12 @@ export default function DriftAccountInfo({
     );
   }
 
-
-  if(!result || !result?.info){
-    return(
+  if (!result || !result?.info) {
+    return (
       <>
         <Skeleton className="h-[300px] w-full rounded-lg" />
       </>
-    )
+    );
   }
 
   const {
@@ -298,7 +306,7 @@ export default function DriftAccountInfo({
                     <div className="flex flex-col gap-1">
                       <span className="text-muted-foreground">Available</span>
                       <span
-                        className={`font-mono ${(!position?.availableBalance || position?.availableBalance < 0) ? 'text-red-400' : 'text-green-400'}`}
+                        className={`font-mono ${!position?.availableBalance || position?.availableBalance < 0 ? 'text-red-400' : 'text-green-400'}`}
                       >
                         {position?.availableBalance.toFixed(8)}
                       </span>
@@ -350,102 +358,104 @@ export default function DriftAccountInfo({
           </div>
           {showPerpPositions && perpPositions.length > 0 && (
             <div className="grid gap-3">
-              {perpPositions.map((position, index) => (
-                <div
-                  key={index}
-                  className="rounded-lg border border-border/50 p-3 transition-colors hover:bg-accent/50"
-                >
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{position?.market}</span>
-                      <Badge
-                        variant={
-                          position?.positionType === 'short'
-                            ? 'destructive'
-                            : 'secondary'
-                        }
-                        className="text-xs"
-                      >
-                        {position?.positionType.toUpperCase()}
-                      </Badge>
-                    </div>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={()=> setSelectedPrepPosition(position)}
-                      className="text-xs px-2 py-1 h-8"
-                    >
-                      Close Position
-                    </Button>
-                  </div>
-                  <div className="grid gap-3">
-                    <div className="grid grid-cols-4 items-center gap-2 text-sm">
-                      <div className="flex flex-col">
-                        <span className="text-muted-foreground">P&L</span>
-                        <span
-                          className={`font-mono ${position?.baseAssetAmount < 0 ? 'text-red-400' : 'text-green-400'}`}
+              <div className="max-h-[370px] overflow-y-auto pr-2">
+                {perpPositions.map((position, index) => (
+                  <div
+                    key={index}
+                    className="mb-3 rounded-lg border border-border/50 p-3 transition-colors last:mb-0 hover:bg-accent/50"
+                  >
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{position?.market}</span>
+                        <Badge
+                          variant={
+                            position?.positionType === 'short'
+                              ? 'destructive'
+                              : 'secondary'
+                          }
+                          className="text-xs"
                         >
-                          {position?.baseAssetAmount < 0 ? '-$' : '$'}
-                          {Math.abs(position?.baseAssetAmount).toFixed(2)}
-                        </span>
+                          {position?.positionType.toUpperCase()}
+                        </Badge>
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground">Amount</span>
-                        <span className="font-mono">
-                          ${(position?.quoteAssetAmount).toFixed(2)}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground">
-                          Entry Amount
-                        </span>
-                        <span className="font-mono">
-                          ${position?.quoteEntryAmount}
-                        </span>
-                      </div>
-                      {/* <div className="flex flex-col gap-1">
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => setSelectedPrepPosition(position)}
+                        className="h-8 px-2 py-1 text-xs"
+                      >
+                        Close Position
+                      </Button>
+                    </div>
+                    <div className="grid gap-3">
+                      <div className="grid grid-cols-4 items-center gap-2 text-sm">
+                        <div className="flex flex-col">
+                          <span className="text-muted-foreground">P&L</span>
+                          <span
+                            className={`font-mono ${position?.baseAssetAmount < 0 ? 'text-red-400' : 'text-green-400'}`}
+                          >
+                            {position?.baseAssetAmount < 0 ? '-$' : '$'}
+                            {Math.abs(position?.baseAssetAmount).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">Amount</span>
+                          <span className="font-mono">
+                            ${(position?.quoteAssetAmount).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
                           <span className="text-muted-foreground">
-                            Break Even
+                            Entry Amount
                           </span>
                           <span className="font-mono">
-                            {position.quoteBreakEvenAmount}
+                            ${position?.quoteEntryAmount}
                           </span>
-                        </div> */}
-                    </div>
-                    <Separator />
-                    <div className="grid grid-cols-4 gap-2 text-sm">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground">
-                          Settled PnL
-                        </span>
-                        <span className="font-mono">
-                          {position?.settledPnl}
-                        </span>
+                        </div>
+                        {/* <div className="flex flex-col gap-1">
+                            <span className="text-muted-foreground">
+                              Break Even
+                            </span>
+                            <span className="font-mono">
+                              {position.quoteBreakEvenAmount}
+                            </span>
+                          </div> */}
                       </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground">Orders</span>
-                        <span className="font-mono">
-                          {position?.openOrders}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground">Bids</span>
-                        <span className="font-mono text-green-400">
-                          {position?.openBids}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground">Asks</span>
-                        <span className="font-mono text-red-400">
-                          {position?.openAsks}
-                        </span>
+                      <Separator />
+                      <div className="grid grid-cols-4 gap-2 text-sm">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">
+                            Settled PnL
+                          </span>
+                          <span className="font-mono">
+                            {position?.settledPnl}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">Orders</span>
+                          <span className="font-mono">
+                            {position?.openOrders}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">Bids</span>
+                          <span className="font-mono text-green-400">
+                            {position?.openBids}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-muted-foreground">Asks</span>
+                          <span className="font-mono text-red-400">
+                            {position?.openAsks}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-            )}
+          )}
 
           {showPerpPositions && perpPositions.length === 0 && (
             <div className="py-2 text-center text-sm text-muted-foreground">
@@ -454,21 +464,22 @@ export default function DriftAccountInfo({
           )}
         </div>
 
-      {result?.step === 'awaiting-confirmation' &&selectedPrepPosition && (
-        <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
-          <div className="flex items-center justify-between gap-2">
-            <Button onClick={handleCancel} variant="default">
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmation} variant="default">
-              Confirm
-            </Button>
-          </div>
-          <div className="text-sm text-muted-foreground">
-            Ready to close {selectedPrepPosition?.positionType} {selectedPrepPosition?.market} position!
-          </div>
-        </CardFooter>
-      )}
+        {result?.step === 'awaiting-confirmation' && selectedPrepPosition && (
+          <CardFooter className="justify-between border-t bg-muted/50 px-6 py-4">
+            <div className="flex items-center justify-between gap-2">
+              <Button onClick={handleCancel} variant="default">
+                Cancel
+              </Button>
+              <Button onClick={handleConfirmation} variant="default">
+                Confirm
+              </Button>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Ready to close {selectedPrepPosition?.positionType}{' '}
+              {selectedPrepPosition?.market} position!
+            </div>
+          </CardFooter>
+        )}
       </CardContent>
     </Card>
   );
