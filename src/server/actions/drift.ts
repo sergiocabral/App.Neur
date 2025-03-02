@@ -265,3 +265,32 @@ export async function getDriftAccountInfo() {
     };
   }
 }
+
+export async function depositToDriftUserAccount({
+  amount,
+  symbol,
+}: {
+  amount: number;
+  symbol: string;
+}) {
+  try {
+    const agent = (await retrieveAgentKit(undefined))?.data?.data?.agent;
+    if (!agent) {
+      return {
+        success: false,
+        error: 'Failed to retrieve agent',
+      };
+    }
+    const result = await agent.depositToDriftUserAccount(amount, symbol);
+    return { success: true, result };
+  } catch (error) {
+    console.log('Error while depositing to drift account', error);
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : 'Failed to deposit to drift account',
+    };
+  }
+}

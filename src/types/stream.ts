@@ -1,7 +1,5 @@
-import { z } from 'zod';
-
-import { MeteoraPool, PositionWithPoolName } from '@/server/actions/meteora';
 import { PerpMarketType, SpotMarketType } from '@/server/actions/drift';
+import { PositionWithPoolName } from '@/server/actions/meteora';
 
 export interface TokenInfo {
   symbol?: string;
@@ -17,17 +15,17 @@ export interface SpotPosition {
   type: string;
 }
 
-export interface perpPosition { 
-  market: string; 
-  baseAssetAmount: number; 
-  quoteAssetAmount: number; 
-  quoteEntryAmount: number; 
-  quoteBreakEvenAmount: number; 
-  settledPnl: number; 
-  openAsks: number; 
-  openBids: number; 
-  openOrders: number; 
-  positionType: string; 
+export interface perpPosition {
+  market: string;
+  baseAssetAmount: number;
+  quoteAssetAmount: number;
+  quoteEntryAmount: number;
+  quoteBreakEvenAmount: number;
+  settledPnl: number;
+  openAsks: number;
+  openBids: number;
+  openOrders: number;
+  positionType: string;
 }
 
 export interface DriftAccountInfoType {
@@ -135,6 +133,22 @@ export interface CreateDriftDataResult {
   account?: string;
 }
 
+export interface DepositDriftDataResult {
+  step?:
+    | 'updating'
+    | 'awaiting-confirmation'
+    | 'confirmed'
+    | 'processing'
+    | 'completed'
+    | 'canceled'
+    | 'failed';
+  symbol?: string;
+  amount?: number;
+  availableSymbols?: Array<{ symbol: string; mint: string }>;
+  txSig?: string;
+  account?: string;
+}
+
 export interface Token {
   symbol: string;
   mint: string;
@@ -178,7 +192,7 @@ export interface MeteoraPositionUpdateResult {
 }
 
 export interface DriftPrepTrade {
-  step?: 
+  step?:
     | 'market-selection'
     | 'inputs'
     | 'awaiting-confirmation'
@@ -195,7 +209,6 @@ export interface DriftPrepTrade {
   signature?: string;
   error?: string;
 }
-
 
 export interface DriftSpotTrade {
   step?:
@@ -226,7 +239,7 @@ export interface ManageDriftPosition {
     | 'canceled'
     | 'failed';
   info?: DriftAccountInfoType;
-  selectedPrepPositon?: perpPosition; 
+  selectedPrepPositon?: perpPosition;
   signature?: string;
   error?: string;
 }
