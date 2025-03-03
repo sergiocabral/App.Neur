@@ -257,7 +257,7 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
                     )}
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
-                        {`Swapping ${fromAmount} ${fromSymbol} for ${toAmount} ${toSymbol} at ${slippage}% slippage`}
+                        {`Swapping ${fromAmount?fromAmount:''} ${fromSymbol} for ${toAmount?toAmount:''} ${toSymbol} at ${slippage}% slippage`}
                       </span>
                     </div>
                   </div>

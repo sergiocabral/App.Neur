@@ -269,7 +269,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
 
                 <Separator />
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Amount</Label>
+                  <Label htmlFor="amount">Amount in USD</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -317,13 +317,13 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
                 </div>
                 {type === 'limit' && (
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Price</Label>
+                    <Label htmlFor="amount">Price of {selectedMarket.baseAssetSymbol} in USD</Label>
                     <Input
                       id="price"
                       type="number"
                       value={price}
                       onChange={(e) => setPrice(Number(e.target.value))}
-                      placeholder="Enter Limit Price"
+                      placeholder={`Enter Limit Price of ${selectedMarket.baseAssetSymbol} in USD`}
                     />
                   </div>
                 )}
@@ -445,7 +445,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
             <Button onClick={handleCancel} variant="default">
               Cancel
             </Button>
-            {selectedMarket && type && action && amount && (
+            {selectedMarket && action && (amount && amount > 0) && (type == 'market' || (type=='limit' && (price && price >0)))&& (
               <Button onClick={handleConfirmation} variant="default">
                 Confirm
               </Button>
@@ -456,7 +456,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
               ? `Ready to ${
                   action === 'long' ? 'open a long position'
                 : 'open a short position'
-              }`: ''}
+              } in ${selectedMarket?.symbol}`: ''}
           </div>
         </CardFooter>
       )}

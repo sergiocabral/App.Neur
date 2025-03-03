@@ -166,6 +166,21 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
   };
 };
 
+const amountSchema = z
+  .object({
+    toAmount: z.number().optional().describe('The amount of the token to swap to'),
+    fromAmount: z.number().optional().describe('The amount to swap from'),
+  })
+  .refine(
+    (data) => 
+      (data.toAmount === undefined) !== (data.fromAmount === undefined) && // Ensures exactly one is provided
+      ((data.toAmount !== undefined && data.toAmount > 0) || (data.fromAmount !== undefined && data.fromAmount > 0)), // Ensures provided value is > 0
+    {
+      message: 'Either `toAmount` or `fromAmount` must be provided and must be greater than 0, but not both.',
+      path: [],
+    }
+  );
+
 export const SpotTokenSwapDrift = (): ToolConfig => {
   const metadata = {
     description: 'Swap spot tokens on Drift protocol.',
@@ -179,8 +194,7 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
     updateParameters: z.object({
       fromSymbol: z.string().describe('The symbol of the token to swap from'),
       toSymbol: z.string().describe('The symbol of the token to swap to'),
-      fromAmount: z.number().describe('The amount to swap from'),
-      toAmount: z.number().describe('The amount to swap to'),
+      amount: amountSchema,
       slippage: z.number().optional().describe('The slippage tolerance'),
     }),
   };
@@ -248,16 +262,12 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
             },
           },
         });
-        console.log(
-          'Started to swap spot tokens on Drift protocol.....................',
-        );
         const { object: originalToolCall } = await generateObject({
           model: openai('gpt-4o-mini', { structuredOutputs: true }),
           schema: z.object({
             fromSymbol: z.string().nullable(),
             toSymbol: z.string().nullable(),
-            fromAmount: z.number().nullable(),
-            toAmount: z.number().nullable(),
+            amount: amountSchema.nullable(),
             slippage: z.number().nullable(),
           }),
           prompt: `The user sent the following message: ${message}`,
@@ -269,8 +279,8 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
             step: 'awaiting-confirmation',
             fromSymbol: originalToolCall.fromSymbol ?? undefined,
             toSymbol: originalToolCall.toSymbol ?? undefined,
-            fromAmount: originalToolCall.fromAmount ?? undefined,
-            toAmount: originalToolCall.toAmount ?? undefined,
+            fromAmount: originalToolCall.amount?.fromAmount ?? undefined,
+            toAmount: originalToolCall.amount?.toAmount ?? undefined,
             slippage: originalToolCall.slippage ?? undefined,
           };
           streamUpdate({

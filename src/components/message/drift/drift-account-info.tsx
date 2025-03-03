@@ -358,7 +358,7 @@ export default function DriftAccountInfo({
           </div>
           {showPerpPositions && perpPositions.length > 0 && (
             <div className="grid gap-3">
-              <div className="max-h-[370px] overflow-y-auto pr-2">
+              <div className="max-h-[300px] overflow-y-auto pr-2">
                 {perpPositions.map((position, index) => (
                   <div
                     key={index}
