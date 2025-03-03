@@ -73,7 +73,8 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
             | 'confirmed'
             | 'processing'
             | 'completed'
-            | 'canceled';
+            | 'canceled'
+            | 'failed';
           prepMarkets?: PerpMarketType[];
           amount?: number;
           action?: 'long' | 'short';
@@ -162,7 +163,38 @@ export const tradeDriftPerpAccount = (): ToolConfig => {
   return {
     metadata,
     buildTool,
-    confirm: tradeDriftPerpAccountAction,
+    confirm: async (toolResults: any, extraData: any) => {
+      const { amount, symbol, action, type, price } = toolResults;
+      try {
+        const result = await tradeDriftPerpAccountAction({
+          amount,
+          symbol,
+          action,
+          type,
+          price,
+        }, extraData);
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            ...result,
+            signature: result.result?.signature,
+            step: 'completed',
+          },
+        };
+      } catch (error) {
+        console.error(error);
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            step: 'failed',
+            error: error instanceof Error ? error.message : 'An unexpected error occurred.',
+          },
+        };
+        
+      }
+    },
   };
 };
 
@@ -215,7 +247,8 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
             | 'confirmed'
             | 'processing'
             | 'completed'
-            | 'canceled';
+            | 'canceled'
+            | 'failed';
           fromSymbol?: string;
           toSymbol?: string;
           fromAmount?: number;
@@ -313,6 +346,37 @@ export const SpotTokenSwapDrift = (): ToolConfig => {
   return {
     metadata,
     buildTool,
-    confirm: SpotTokenSwapDriftAction,
+    confirm: async (toolResults: any, extraData: any) => {
+      const { fromSymbol, toSymbol, fromAmount, toAmount, slippage } = toolResults;
+      try {
+        const result = await SpotTokenSwapDriftAction({
+          fromSymbol,
+          toSymbol,
+          toAmount,
+          fromAmount,
+          slippage,
+        }, extraData);
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            ...result,
+            signature: result.result?.signature,
+            step: 'completed',
+          },
+        };
+      } catch (error) {
+        console.error(error);
+        return {
+          success: true,
+          noFollowUp: true,
+          result: {
+            step: 'failed',
+            error: error instanceof Error ? error.message : 'An unexpected error occurred.',
+          },
+        };
+        
+      }
+    },
   };
 };

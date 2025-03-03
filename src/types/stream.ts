@@ -199,7 +199,8 @@ export interface DriftPrepTrade {
     | 'confirmed'
     | 'processing'
     | 'completed'
-    | 'canceled';
+    | 'canceled'
+    | 'failed';
   prepMarkets?: PerpMarketType[];
   amount?: number;
   action?: 'long' | 'short';

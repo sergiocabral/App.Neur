@@ -6,11 +6,7 @@ import Link from 'next/link';
 
 import { AnimatePresence, motion } from 'framer-motion';
 import { isNull } from 'lodash';
-import {
-  ArrowDown,
-  ArrowRight,
-  X,
-} from 'lucide-react';
+import { ArrowDown, ArrowRight, X } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -46,12 +42,22 @@ interface DriftPrepTradeProps {
 }
 
 export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
-  const [fromSymbol, setFromSymbol] = useState<string>(data.result?.fromSymbol || 'SOL');
+  const [fromSymbol, setFromSymbol] = useState<string>(
+    data.result?.fromSymbol || 'SOL',
+  );
   const [toSymbol, setToSymbol] = useState<string>();
-  const [fromAmount, setFromAmount] = useState<number | undefined>(data.result?.fromAmount);
-  const [toAmount, setToAmount] = useState<number | undefined>(data.result?.toAmount);
-  const [slippage, setSlippage] = useState<number>(data.result?.slippage || 0.5);
-  const [sportMarketList, setSportMarketList] = useState<SpotMarketType[]>(data.result?.spotMarkets || []);
+  const [fromAmount, setFromAmount] = useState<number | undefined>(
+    data.result?.fromAmount,
+  );
+  const [toAmount, setToAmount] = useState<number | undefined>(
+    data.result?.toAmount,
+  );
+  const [slippage, setSlippage] = useState<number>(
+    data.result?.slippage || 0.5,
+  );
+  const [sportMarketList, setSportMarketList] = useState<SpotMarketType[]>(
+    data.result?.spotMarkets || [],
+  );
 
   const [step, setStep] = useState<
     | 'get-markets'
@@ -67,19 +73,23 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
 
   const [overlay, setOverlay] = useState(
     data.result?.step === 'confirmed' ||
-    data.result?.step === 'processing' ||
-    data.result?.step === 'canceled' ||
-    data.result?.step === 'completed',
+      data.result?.step === 'processing' ||
+      data.result?.step === 'canceled' ||
+      data.result?.step === 'completed',
   );
+
+  const [isErrorExpanded, setIsErrorExpanded] = useState(false);
 
   useEffect(() => {
     if (data.result?.step) setStep(data.result?.step);
     setOverlay(
       data.result?.step === 'confirmed' ||
-      data.result?.step === 'processing' ||
-      data.result?.step === 'completed' ||
-      data.result?.step === 'canceled',
+        data.result?.step === 'processing' ||
+        data.result?.step === 'completed' ||
+        data.result?.step === 'canceled',
     );
+    if (data.result?.spotMarkets) setSportMarketList(data.result?.spotMarkets);
+    console.log(data);
   }, [data]);
 
   const handleConfirmation = async () => {
@@ -87,8 +97,8 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
       setIsLoading(true);
       await addToolResult({
         step: 'confirmed',
-        fromAmount: (fromAmount && fromAmount > 0) ? fromAmount : undefined,
-        toAmount: (toAmount && toAmount > 0) ? toAmount : undefined,
+        fromAmount: fromAmount && fromAmount > 0 ? fromAmount : undefined,
+        toAmount: toAmount && toAmount > 0 ? toAmount : undefined,
         fromSymbol: fromSymbol,
         toSymbol: toSymbol,
         slippage: slippage,
@@ -98,26 +108,20 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
     }
   };
 
-  useEffect(() => {
-    console.log({ fromSymbol, toSymbol, fromAmount, toAmount, slippage, step: data });
-    if(data.result?.spotMarkets)
-      setSportMarketList(data.result?.spotMarkets);
-  }, [fromSymbol, toSymbol, fromAmount, toAmount, slippage, data]);
-
   const handleCancel = async () => {
     setFromAmount(0);
     setToAmount(0);
     setFromSymbol('SOL');
     setToSymbol('');
     setSlippage(0.5);
-      try {
-        setIsLoading(true);
-        addToolResult({
-          step: 'canceled',
-        });
-      } finally {
-        setIsLoading(false);
-      }
+    try {
+      setIsLoading(true);
+      addToolResult({
+        step: 'canceled',
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -132,86 +136,89 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
             <CardContent className="space-y-3">
               <div className="sticky top-0 z-10 bg-background pb-2">
                 <AnimatePresence mode="wait">
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -20 }}
-                  className="py-8"
-                >
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder={`Amount of ${fromSymbol} to be swapped`}
-                      disabled={(toAmount && toAmount > 0)? true: false}
-                      value={fromAmount}
-                      onChange={(e) => setFromAmount(Number(e.target.value))}
-                      className="w-full"
-                    />
-                    <Select
-                      value={fromSymbol}
-                      onValueChange={(value) => {
-                        if (value !== toSymbol) {
-                          setFromSymbol(value);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select token" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sportMarketList.map((market) => (
-                          <SelectItem
-                            key={market.symbol}
-                            value={market.symbol}
-                            disabled={market.symbol === toSymbol}
-                          >
-                            {market.symbol}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className='flex items-center justify-center'>
-                    <ArrowDown className="h-8 w-5 text-primary" />
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Input
-                      type="number"
-                      placeholder={`Amount of ${toSymbol} You will receive`}
-                      disabled={(fromAmount && fromAmount > 0)? true: false}
-                      value={toAmount}
-                      onChange={(e) => setToAmount(Number(e.target.value))}
-                      className="w-full"
-                    />
-                    <Select
-                      value={toSymbol}
-                      onValueChange={(value) => {
-                        if (value !== fromSymbol) {
-                          setToSymbol(value);
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Select token" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {sportMarketList.map((market) => (
-                          <SelectItem
-                            key={market.symbol}
-                            value={market.symbol}
-                            disabled={market.symbol === toSymbol}
-                          >
-                            {market.symbol}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex justify-end mt-2">
-                    <SlippageSelector defaultSlippage={0.5} onChange={setSlippage} />
-                  </div>
-                </motion.div>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="py-8"
+                  >
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder={`Amount of ${fromSymbol} to be swapped`}
+                        disabled={toAmount && toAmount > 0 ? true : false}
+                        value={fromAmount}
+                        onChange={(e) => setFromAmount(Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <Select
+                        value={fromSymbol}
+                        onValueChange={(value) => {
+                          if (value !== toSymbol) {
+                            setFromSymbol(value);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select token" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sportMarketList.map((market) => (
+                            <SelectItem
+                              key={market.symbol}
+                              value={market.symbol}
+                              disabled={market.symbol === toSymbol}
+                            >
+                              {market.symbol}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-center">
+                      <ArrowDown className="h-8 w-5 text-primary" />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder={`Amount of ${toSymbol} You will receive`}
+                        disabled={fromAmount && fromAmount > 0 ? true : false}
+                        value={toAmount}
+                        onChange={(e) => setToAmount(Number(e.target.value))}
+                        className="w-full"
+                      />
+                      <Select
+                        value={toSymbol}
+                        onValueChange={(value) => {
+                          if (value !== fromSymbol) {
+                            setToSymbol(value);
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="w-[180px]">
+                          <SelectValue placeholder="Select token" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {sportMarketList.map((market) => (
+                            <SelectItem
+                              key={market.symbol}
+                              value={market.symbol}
+                              disabled={market.symbol === toSymbol}
+                            >
+                              {market.symbol}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="mt-2 flex justify-end">
+                      <SlippageSelector
+                        defaultSlippage={0.5}
+                        onChange={setSlippage}
+                      />
+                    </div>
+                  </motion.div>
                 </AnimatePresence>
               </div>
             </CardContent>
@@ -257,7 +264,7 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
                     )}
                     <div className="flex items-center justify-center gap-2 text-sm">
                       <span className="font-medium">
-                        {`Swapping ${fromAmount?fromAmount:''} ${fromSymbol} for ${toAmount?toAmount:''} ${toSymbol} at ${slippage}% slippage`}
+                        {`Swapping ${fromAmount ? fromAmount : ''} ${fromSymbol} for ${toAmount ? toAmount : ''} ${toSymbol} at ${slippage}% slippage`}
                       </span>
                     </div>
                   </div>
@@ -289,32 +296,54 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
                     }}
                     className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
                   >
-                    <CompletedAnimation />
+                    {data.result?.error ? (
+                      <X className="h-8 w-8 text-destructive" />
+                    ) : (
+                      <CompletedAnimation />
+                    )}
                   </motion.div>
-
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-medium">
-                      Trade Executed Successfully!
-                    </h3>
-                    <div className="flex items-center justify-center gap-2 text-sm">
-                      <span className="font-medium">
-                        <span className="font-medium">Success</span>
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">
-                        Signature:{' '}
-                        <Link
-                          href={`https://solscan.io/tx/${data.result.signature}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
+                  {data.result?.error ? (
+                    <div className="p-4 text-red-600">
+                      <h3 className="text-lg font-medium">
+                        Error Failed to execute trade
+                      </h3>
+                      <p>
+                        {isErrorExpanded
+                          ? data.result.error
+                          : `${data.result.error.split('\n')[0]}...`} {/* Show first line */}
+                        <button
+                          onClick={() => setIsErrorExpanded(!isErrorExpanded)}
+                          className="text-blue-500 hover:underline"
                         >
-                          {data.result.signature?.toString().slice(0, 8)}...
-                          {data.result.signature?.toString().slice(-8)}
-                        </Link>
-                      </span>
+                          {isErrorExpanded ? 'Read less' : 'Read more'}
+                        </button>
+                      </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-medium">
+                        Trade Executed Successfully!
+                      </h3>
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <span className="font-medium">
+                          <span className="font-medium">Success</span>
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          Signature:{' '}
+                          <Link
+                            href={`https://solscan.io/tx/${data.result.signature}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            {data.result.signature?.toString().slice(0, 8)}...
+                            {data.result.signature?.toString().slice(-8)}
+                          </Link>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </AnimatePresence>
@@ -328,14 +357,18 @@ export function SpotSwapDrift({ data, addToolResult }: DriftPrepTradeProps) {
             <Button onClick={handleCancel} variant="default">
               Cancel
             </Button>
-            {fromSymbol && toSymbol && slippage && ((fromAmount && fromAmount >0) || (toAmount && toAmount >0))&& (
-              <Button onClick={handleConfirmation} variant="default">
-                Confirm
-              </Button>
-            )}
+            {fromSymbol &&
+              toSymbol &&
+              slippage &&
+              ((fromAmount && fromAmount > 0) ||
+                (toAmount && toAmount > 0)) && (
+                <Button onClick={handleConfirmation} variant="default">
+                  Confirm
+                </Button>
+              )}
           </div>
           <div className="text-sm text-muted-foreground">
-            {`Ready to swap ${fromAmount?fromAmount:''} ${fromSymbol} for ${toAmount?toAmount:''} ${toSymbol} at ${slippage}% slippage`}
+            {`Ready to swap ${fromAmount ? fromAmount : ''} ${fromSymbol} for ${toAmount ? toAmount : ''} ${toSymbol} at ${slippage}% slippage`}
           </div>
         </CardFooter>
       )}

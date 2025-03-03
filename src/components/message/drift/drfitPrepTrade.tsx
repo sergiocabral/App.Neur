@@ -28,7 +28,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PerpMarketType } from '@/server/actions/drift';
@@ -61,6 +60,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
     | 'processing'
     | 'completed'
     | 'canceled'
+    | 'failed'
   >(data.result?.step || 'market-selection');
 
   const [mainnetPerpMarketsLists, setMainnetPerpMarketsLists] = useState<
@@ -73,21 +73,24 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
 
   const [overlay, setOverlay] = useState(
     data.result?.step === 'confirmed' ||
-    data.result?.step === 'processing' ||
-    data.result?.step === 'canceled' ||
-    data.result?.step === 'completed',
+      data.result?.step === 'processing' ||
+      data.result?.step === 'canceled' ||
+      data.result?.step === 'completed',
   );
+  
+  const [isErrorExpanded, setIsErrorExpanded] = useState(false);
 
   useEffect(() => {
-    if(data.result?.prepMarkets) setMainnetPerpMarketsLists(data.result?.prepMarkets);
+    if (data.result?.prepMarkets)
+      setMainnetPerpMarketsLists(data.result?.prepMarkets);
 
     if (data.result?.step) setStep(data.result?.step);
 
     setOverlay(
       data.result?.step === 'confirmed' ||
-      data.result?.step === 'processing' ||
-      data.result?.step === 'completed' ||
-      data.result?.step === 'canceled',
+        data.result?.step === 'processing' ||
+        data.result?.step === 'completed' ||
+        data.result?.step === 'canceled',
     );
   }, [data]);
 
@@ -114,14 +117,14 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
   const handleBack = async () => {
     try {
       setIsLoading(true);
-        setAction(undefined);
-        setType(undefined);
-        setAmount(undefined);
-        setPrice(undefined);
-        setSelectedMarket(null);
-        await addToolResult({
-          step: 'awaiting-confirmation',
-        });
+      setAction(undefined);
+      setType(undefined);
+      setAmount(undefined);
+      setPrice(undefined);
+      setSelectedMarket(null);
+      await addToolResult({
+        step: 'awaiting-confirmation',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -165,6 +168,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
   return (
     <Card className="overflow-hidden">
       <CardContent className="pt-6">
+
         {/* DLMM Position Selection */}
         {!overlay && !selectedMarket && mainnetPerpMarketsLists && (
           <>
@@ -305,7 +309,7 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
                       setAction(value)
                     }
                   >
-                     <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-2">
                       <RadioGroupItem value="long" />
                       <label htmlFor="long">Long</label>
                     </div>
@@ -317,7 +321,9 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
                 </div>
                 {type === 'limit' && (
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Price of {selectedMarket.baseAssetSymbol} in USD</Label>
+                    <Label htmlFor="amount">
+                      Price of {selectedMarket.baseAssetSymbol} in USD
+                    </Label>
                     <Input
                       id="price"
                       type="number"
@@ -374,7 +380,10 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
                         {`Open a ${
                           action === 'long' ? 'long' : 'short'
                         } position on ${selectedMarket?.symbol} at ${
-                          type === 'market' ? 'market price' : `price: ${price} ${selectedMarket?.baseAssetSymbol}`}`}
+                          type === 'market'
+                            ? 'market price'
+                            : `price: ${price} ${selectedMarket?.baseAssetSymbol}`
+                        }`}
                       </span>
                     </div>
                   </div>
@@ -406,32 +415,52 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
                     }}
                     className="flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10"
                   >
+                  {data.result?.error ? (
+                    <X className="h-8 w-8 text-destructive" />
+                  ) : (
                     <CompletedAnimation />
+                  )}
                   </motion.div>
-
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-medium">
-                      Trade Executed Successfully!
-                    </h3>
-                    <div className="flex items-center justify-center gap-2 text-sm">
-                      <span className="font-medium">
-                        <span className="font-medium">Success</span>
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">
-                        Signature:{' '}
-                        <Link
-                          href={`https://solscan.io/tx/${data.result.signature}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline"
+                  {data.result?.error ? (
+                    <div className="p-4 text-red-600">
+                      <h3 className="text-lg font-medium">Error</h3>
+                      <p>
+                        {isErrorExpanded
+                          ? data.result.error
+                          : `${data.result.error.split('\n')[0]}...`} {/* Show first line */}
+                        <button
+                          onClick={() => setIsErrorExpanded(!isErrorExpanded)}
+                          className="text-blue-500 hover:underline"
                         >
-                          {data.result.signature?.toString().slice(0, 8)}...
-                          {data.result.signature?.toString().slice(-8)}
-                        </Link>
-                      </span>
+                          {isErrorExpanded ? 'Read less' : 'Read more'}
+                        </button>
+                      </p>
                     </div>
-                  </div>
+                  ): (
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-medium">
+                        Trade Executed Successfully!
+                      </h3>
+                      <div className="flex items-center justify-center gap-2 text-sm">
+                        <span className="font-medium">
+                          <span className="font-medium">Success</span>
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          Signature:{' '}
+                          <Link
+                            href={`https://solscan.io/tx/${data.result.signature}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="hover:underline"
+                          >
+                            {data.result.signature?.toString().slice(0, 8)}...
+                            {data.result.signature?.toString().slice(-8)}
+                          </Link>
+                        </span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </motion.div>
             </AnimatePresence>
@@ -445,18 +474,24 @@ export function DriftPrepTrade({ data, addToolResult }: DriftPrepTradeProps) {
             <Button onClick={handleCancel} variant="default">
               Cancel
             </Button>
-            {selectedMarket && action && (amount && amount > 0) && (type == 'market' || (type=='limit' && (price && price >0)))&& (
-              <Button onClick={handleConfirmation} variant="default">
-                Confirm
-              </Button>
-            )}
+            {selectedMarket &&
+              action &&
+              amount &&
+              amount > 0 &&
+              (type == 'market' || (type == 'limit' && price && price > 0)) && (
+                <Button onClick={handleConfirmation} variant="default">
+                  Confirm
+                </Button>
+              )}
           </div>
           <div className="text-sm text-muted-foreground">
             {action
               ? `Ready to ${
-                  action === 'long' ? 'open a long position'
-                : 'open a short position'
-              } in ${selectedMarket?.symbol}`: ''}
+                  action === 'long'
+                    ? 'open a long position'
+                    : 'open a short position'
+                } in ${selectedMarket?.symbol}`
+              : ''}
           </div>
         </CardFooter>
       )}
