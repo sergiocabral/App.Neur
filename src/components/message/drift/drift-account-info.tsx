@@ -182,7 +182,7 @@ export default function DriftAccountInfo({
     );
   }
 
-  if (!success) {
+  if (success === false) {
     return (
       <Card className="bg-destructive/10 p-6">
         <h2 className="mb-2 text-xl font-semibold text-destructive">
