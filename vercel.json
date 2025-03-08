@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/minute",
-      "schedule": "* * * * *"
+      "schedule": "0 0 * * *"
     },
     {
       "path": "/api/cron/subscription",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
